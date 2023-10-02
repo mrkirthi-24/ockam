@@ -67,6 +67,7 @@ pub mod storage;
 
 /// Vault
 pub mod vault;
+mod repository;
 
 ///
 /// Exports
