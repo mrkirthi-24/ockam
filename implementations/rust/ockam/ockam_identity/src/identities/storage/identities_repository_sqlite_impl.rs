@@ -101,7 +101,7 @@ impl IdentitiesWriter for IdentitiesSqliteRepository {
 #[async_trait]
 impl IdentitiesReader for IdentitiesSqliteRepository {
     async fn retrieve_identity(&self, identifier: &Identifier) -> Result<Option<ChangeHistory>> {
-        self.db.query_one(
+        self.db.query_maybe_one(
             "SELECT change_history FROM IDENTITY WHERE identifier = ?1",
             params![identifier],
             ChangeHistoryFromRow,
