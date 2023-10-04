@@ -1,6 +1,7 @@
 mod attributes_entry;
 mod identities_repository_impl;
 mod identities_repository_trait;
+mod identities_repository_sqlite_impl;
 
 pub use attributes_entry::*;
 pub use identities_repository_impl::*;

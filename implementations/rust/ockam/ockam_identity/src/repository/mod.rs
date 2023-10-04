@@ -1,4 +1,4 @@
 mod migrations;
-mod repository;
+mod sqlite_db;
 
-pub use repository::*;
+pub use sqlite_db::*;

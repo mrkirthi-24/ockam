@@ -41,13 +41,3 @@ pub fn migrate(connection: &mut Connection) -> Result<()> {
 pub(crate) fn map_sqlite_migration_error(err: rusqlite_migration::Error) -> Error {
     Error::new(Origin::Application, Kind::Io, err)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_read_all_the_migration_files() {
-        assert!(!all_migrations().is_empty());
-    }
-}
