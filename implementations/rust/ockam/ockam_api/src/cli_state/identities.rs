@@ -11,7 +11,7 @@ use ockam::identity::storage::LmdbStorage;
 use ockam::identity::{Identifier, IdentitiesRepository, IdentitiesStorage};
 
 use crate::cli_state::traits::{StateDirTrait, StateItemTrait};
-use crate::cli_state::{CliStateError, DATA_DIR_NAME};
+use crate::cli_state::DATA_DIR_NAME;
 
 use super::Result;
 
@@ -27,16 +27,6 @@ impl IdentitiesState {
         } else {
             self.default()
         }
-    }
-
-    pub fn get_by_identifier(&self, identifier: &Identifier) -> Result<IdentityState> {
-        self.list()?
-            .into_iter()
-            .find(|ident_state| &ident_state.config.identifier() == identifier)
-            .ok_or(CliStateError::ResourceNotFound {
-                resource: Self::default_filename().to_string(),
-                name: identifier.to_string(),
-            })
     }
 
     pub async fn identities_repository(&self) -> Result<Arc<dyn IdentitiesRepository>> {
@@ -263,7 +253,7 @@ mod traits {
                 IdentityConfigs::V1(_) | IdentityConfigs::V2(_) | IdentityConfigs::V3(_) => {
                     return Err(CliStateError::InvalidVersion(
                         "Migration not supported for old Identities".to_string(),
-                    ))
+                    ));
                 }
                 IdentityConfigs::V4(_) => {}
             }
