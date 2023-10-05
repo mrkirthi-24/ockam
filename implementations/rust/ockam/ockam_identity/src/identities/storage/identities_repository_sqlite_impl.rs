@@ -140,25 +140,58 @@ impl FromSql for ChangeHistory {
 
 #[cfg(test)]
 mod tests {
-    use core::str::FromStr;
-
-    use tempfile::NamedTempFile;
-
     use super::*;
+    use crate::{Identity, Vault};
+    use std::path::Path;
+    use tempfile::NamedTempFile;
 
     #[tokio::test]
     async fn test_identities_repository() -> Result<()> {
+        let identity1 = create_identity1().await?;
+        let identity2 = create_identity2().await?;
         let db_file = NamedTempFile::new().unwrap();
-        let db = SqliteDb::create(db_file.path()).await?;
-        let repository = IdentitiesSqliteRepository::new(Arc::new(db));
-        let identifier = Identifier::from_str("I6342c580429b9a0733880bea4fa18f8055871130")?;
-        let change_history = ChangeHistory::import(&hex::decode("81a201583ba20101025835a4028201815820530d1c2e9822433b679a66a60b9c2ed47c370cd0ce51cbe1a7ad847b5835a96303f4041a64dd4060051a77a94360028201815840042fff8f6c80603fb1cec4a3cf1ff169ee36889d3ed76184fe1dfbd4b692b02892df9525c61c2f1286b829586d13d5abf7d18973141f734d71c1840520d40a0e").unwrap())?;
+        let repository = create_repository(db_file.path()).await?;
+
+        // store and retrieve or get an identity
         repository
-            .update_identity(&identifier, &change_history)
+            .update_identity(identity1.identifier(), identity1.change_history())
             .await?;
 
-        let identity = repository.retrieve_identity(&identifier).await?;
-        assert!(identity.is_some());
+        let result = repository
+            .retrieve_identity(&identity1.identifier())
+            .await?;
+        assert_eq!(result, Some(identity1.change_history().clone()));
+
+        let result = repository.get_identity(&identity1.identifier()).await?;
+        assert_eq!(result, identity1.change_history().clone());
+
+        // trying to retrieve a missing identity returns None
+        let result = repository
+            .retrieve_identity(&identity2.identifier())
+            .await?;
+        assert_eq!(result, None);
+
+        // trying to get a missing identity returns an error
+        let result = repository.get_identity(&identity2.identifier()).await;
+        assert!(result.is_err());
         Ok(())
+    }
+
+    /// HELPERS
+    async fn create_identity1() -> Result<Identity> {
+        let change_history = ChangeHistory::import(&hex::decode("81a201583ba20101025835a4028201815820530d1c2e9822433b679a66a60b9c2ed47c370cd0ce51cbe1a7ad847b5835a96303f4041a64dd4060051a77a94360028201815840042fff8f6c80603fb1cec4a3cf1ff169ee36889d3ed76184fe1dfbd4b692b02892df9525c61c2f1286b829586d13d5abf7d18973141f734d71c1840520d40a0e").unwrap())?;
+        Identity::import_from_change_history(None, change_history, Vault::create_verifying_vault())
+            .await
+    }
+
+    async fn create_identity2() -> Result<Identity> {
+        let change_history = ChangeHistory::import(&hex::decode("81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805").unwrap())?;
+        Identity::import_from_change_history(None, change_history, Vault::create_verifying_vault())
+            .await
+    }
+
+    async fn create_repository(path: &Path) -> Result<IdentitiesSqliteRepository> {
+        let db = SqliteDb::create(path).await?;
+        Ok(IdentitiesSqliteRepository::new(Arc::new(db)))
     }
 }
