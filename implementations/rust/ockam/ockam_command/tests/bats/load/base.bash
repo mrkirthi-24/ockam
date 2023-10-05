@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Unset OCKAM_LOG so it doesn't interfere in the CLI input/output
-#unset OCKAM_LOG
+unset OCKAM_LOG
 
 # Set QUIET to 1 to suppress user-facing logging written at stderr
-#export QUIET=1
+export QUIET=1
 
 # Ockam binary to use
 if [[ -z $OCKAM ]]; then

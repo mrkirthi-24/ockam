@@ -1,5 +1,7 @@
+use crate::AttributeValue;
 use core::fmt::{Debug, Formatter};
 use ockam_core::access_control::IncomingAccessControl;
+use ockam_core::compat::string::String;
 use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
 use ockam_core::Result;
 use ockam_core::{async_trait, RelayMessage};
@@ -10,14 +12,14 @@ use crate::secure_channel::local_info::IdentitySecureChannelLocalInfo;
 /// Access control checking that message senders have a specific set of attributes
 #[derive(Clone)]
 pub struct CredentialAccessControl {
-    required_attributes: Vec<(String, Vec<u8>)>,
+    required_attributes: Vec<(String, AttributeValue)>,
     storage: Arc<dyn IdentitiesRepository>,
 }
 
 impl CredentialAccessControl {
     /// Create a new credential access control
     pub fn new(
-        required_attributes: &[(String, Vec<u8>)],
+        required_attributes: &[(String, AttributeValue)],
         storage: Arc<dyn IdentitiesRepository>,
     ) -> Self {
         Self {

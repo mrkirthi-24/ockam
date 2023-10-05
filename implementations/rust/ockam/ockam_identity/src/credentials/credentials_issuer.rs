@@ -4,7 +4,6 @@ use crate::{Credentials, IdentitiesRepository, IdentitySecureChannelLocalInfo};
 
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::string::String;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
@@ -39,10 +38,10 @@ impl CredentialsIssuer {
         identities_repository: Arc<dyn IdentitiesRepository>,
         credentials: Arc<Credentials>,
         issuer: &Identifier,
-        trust_context: String,
+        trust_context: &str,
     ) -> Self {
         let subject_attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-            .with_attribute(TRUST_CONTEXT_ID, trust_context.as_bytes().to_vec())
+            .with_attribute(TRUST_CONTEXT_ID, trust_context)
             .build();
 
         Self {
@@ -68,10 +67,8 @@ impl CredentialsIssuer {
         };
 
         let mut subject_attributes = self.subject_attributes.clone();
-        for (key, value) in entry.attrs().iter() {
-            subject_attributes
-                .map
-                .insert(key.clone().into(), value.clone().into());
+        for (key, value) in entry.iter() {
+            subject_attributes.map.insert(key.clone(), value.clone());
         }
 
         let credential = self

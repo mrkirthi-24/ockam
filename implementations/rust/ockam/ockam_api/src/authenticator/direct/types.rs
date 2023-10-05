@@ -20,10 +20,7 @@ impl AddMember {
     }
 
     pub fn with_attributes(mut self, attributes: HashMap<String, String>) -> Self {
-        self.attributes = attributes
-            .into_iter()
-            .map(|(k, v)| (k.into(), v.into()))
-            .collect();
+        self.attributes = attributes;
         self
     }
 

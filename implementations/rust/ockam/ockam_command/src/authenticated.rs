@@ -101,9 +101,8 @@ fn print_entries(entries: &[(Identifier, AttributesEntry)]) {
         .iter()
         .map(|(identifier, entry)| {
             let attrs: HashMap<String, String> = entry
-                .attrs()
                 .iter()
-                .map(|(k, v)| (k.clone(), String::from_utf8(v.clone()).unwrap()))
+                .map(|(k, v)| (k.clone(), v.to_string()))
                 .collect();
             (
                 String::from(identifier),

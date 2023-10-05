@@ -51,12 +51,12 @@ async fn main(ctx: Context) -> Result<()> {
         node.identities().repository(),
         node.credentials(),
         issuer.identifier(),
-        "trust_context".into(),
+        "trust_context",
     );
     for identifier in known_identifiers.iter() {
         node.identities()
             .repository()
-            .put_attribute_value(identifier, "cluster".to_string(), b"production".to_vec())
+            .put_attribute_value(identifier, "cluster", "production".into())
             .await?;
     }
 

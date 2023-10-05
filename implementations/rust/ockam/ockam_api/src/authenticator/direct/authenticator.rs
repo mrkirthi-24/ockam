@@ -39,11 +39,11 @@ impl DirectAuthenticator {
     ) -> Result<()> {
         let auth_attrs = attrs
             .iter()
-            .map(|(k, v)| (k.clone(), v.as_bytes().to_vec()))
+            .map(|(k, v)| (k.clone(), v.clone().into()))
             .chain(
                 [(
                     TRUST_CONTEXT_ID.to_string(),
-                    self.trust_context.as_bytes().to_vec(),
+                    self.trust_context.clone().into(),
                 )]
                 .into_iter(),
             )

@@ -163,8 +163,8 @@ async fn test_one_admin_one_member(ctx: &mut Context) -> Result<()> {
     let attrs = members.get(&member).unwrap();
 
     assert_eq!(attrs.len(), 2);
-    assert_eq!(attrs.get("trust_context_id"), Some(&b"123456".to_vec()));
-    assert_eq!(attrs.get("key"), Some(&b"value".to_vec()));
+    assert_eq!(attrs.get("trust_context_id"), Some(&"123456".into()));
+    assert_eq!(attrs.get("key"), Some(&"value".into()));
 
     assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
@@ -253,16 +253,16 @@ async fn two_admins_two_members_exist_in_one_global_scope(ctx: &mut Context) -> 
     assert!(members1.get(&admin2.identifier).is_some());
     let attrs = members1.get(&member1).unwrap();
     assert_eq!(attrs.len(), 2);
-    assert_eq!(attrs.get("trust_context_id"), Some(&b"123456".to_vec()));
-    assert_eq!(attrs.get("key1"), Some(&b"value1".to_vec()));
+    assert_eq!(attrs.get("trust_context_id"), Some(&"123456".into()));
+    assert_eq!(attrs.get("key1"), Some(&"value1".into()));
     assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
     assert_eq!(attrs.attested_by(), Some(admin1.identifier.clone()));
 
     let attrs = members1.get(&member2).unwrap();
     assert_eq!(attrs.len(), 2);
-    assert_eq!(attrs.get("trust_context_id"), Some(&b"123456".to_vec()));
-    assert_eq!(attrs.get("key2"), Some(&b"value2".to_vec()));
+    assert_eq!(attrs.get("trust_context_id"), Some(&"123456".into()));
+    assert_eq!(attrs.get("key2"), Some(&"value2".into()));
     assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
     assert_eq!(attrs.attested_by(), Some(admin2.identifier.clone()));
@@ -361,8 +361,8 @@ async fn setup(
     let mut trusted_identities = HashMap::<Identifier, AttributesEntry>::new();
 
     let attrs = BTreeMap::from([
-        ("ockam-role".to_string(), b"enroller".to_vec()),
-        ("trust_context_id".to_string(), b"123456".to_vec()),
+        ("ockam-role".to_string(), "enroller".into()),
+        ("trust_context_id".to_string(), "123456".into()),
     ]);
 
     for _ in 0..number_of_admins {

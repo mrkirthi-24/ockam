@@ -197,7 +197,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     //     "true".as_bytes(),
     //     alice_attributes.attrs().get("is_alice").unwrap()
     // );
-    assert_eq!("true".as_bytes(), alice_attributes.get("alice_2").unwrap());
+    assert_eq!(alice_attributes.get("alice_2").unwrap(), &"true".into());
     assert!(alice_attributes.get("is_bob").is_none());
     assert!(alice_attributes.get("bob_2").is_none());
 
@@ -215,7 +215,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
     //     "true".as_bytes(),
     //     bob_attributes.attrs().get("is_bob").unwrap()
     // );
-    assert_eq!("true".as_bytes(), bob_attributes.get("bob_2").unwrap());
+    assert_eq!(bob_attributes.get("bob_2").unwrap(), &"true".into());
 
     context.stop().await
 }

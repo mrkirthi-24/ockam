@@ -77,9 +77,12 @@ async fn run_impl(
     let issuer = ident_state.identifier();
 
     let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-        .with_attribute(TRUST_CONTEXT_ID, auth_identity_identifier.to_string());
+        .with_attribute(
+            TRUST_CONTEXT_ID,
+            auth_identity_identifier.to_string().as_str(),
+        );
     for (key, value) in cmd.attributes()? {
-        attributes_builder = attributes_builder.with_attribute(&key, value.as_bytes().to_vec());
+        attributes_builder = attributes_builder.with_attribute(&key, value.as_str());
     }
 
     let credential = identities

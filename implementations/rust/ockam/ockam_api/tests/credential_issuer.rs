@@ -29,7 +29,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let pre_trusted = HashMap::from([(
         member_identity.identifier().clone(),
         AttributesEntry::new(
-            BTreeMap::from([("attr".to_string(), b"value".to_vec())]),
+            BTreeMap::from([("attr".to_string(), "value".into())]),
             now,
             None,
             None,
@@ -71,7 +71,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         identities.repository(),
         identities.credentials(),
         auth_identity.identifier(),
-        "project42".into(),
+        "project42",
     );
     ctx.start_worker(auth_worker_addr.clone(), auth).await?;
 
@@ -106,14 +106,14 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         )
         .await?;
     assert_eq!(
-        Some(&b"project42".to_vec().into()),
+        Some(&"project42".into()),
         data.credential_data
             .subject_attributes
             .map
             .get("trust_context_id")
     );
     assert_eq!(
-        Some(&b"value".to_vec().into()),
+        Some(&"value".into()),
         data.credential_data.subject_attributes.map.get("attr")
     );
     ctx.stop().await

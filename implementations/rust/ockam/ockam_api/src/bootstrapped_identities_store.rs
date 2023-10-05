@@ -1,8 +1,8 @@
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::utils::now;
 use ockam::identity::{
-    AttributesEntry, Identifier, IdentitiesReader, IdentitiesRepository, IdentitiesWriter,
-    IdentityAttributesReader, IdentityAttributesWriter,
+    AttributeValue, AttributesEntry, Identifier, IdentitiesReader, IdentitiesRepository,
+    IdentitiesWriter, IdentityAttributesReader, IdentityAttributesWriter,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
@@ -76,8 +76,8 @@ impl IdentityAttributesWriter for BootstrapedIdentityStore {
     async fn put_attribute_value(
         &self,
         subject: &Identifier,
-        attribute_name: String,
-        attribute_value: Vec<u8>,
+        attribute_name: &str,
+        attribute_value: AttributeValue,
     ) -> Result<()> {
         self.repository
             .put_attribute_value(subject, attribute_name, attribute_value)
@@ -166,10 +166,7 @@ impl PreTrustedIdentities {
         Ok(raw_map
             .into_iter()
             .map(|(identity_id, raw_attrs)| {
-                let attrs = raw_attrs
-                    .into_iter()
-                    .map(|(k, v)| (k.clone(), v.as_bytes().to_vec()))
-                    .collect();
+                let attrs = raw_attrs.into_iter().map(|(k, v)| (k, v.into())).collect();
                 (identity_id, AttributesEntry::new(attrs, now, None, None))
             })
             .collect())

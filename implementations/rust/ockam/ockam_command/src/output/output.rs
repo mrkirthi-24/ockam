@@ -545,7 +545,7 @@ impl fmt::Display for CredentialDisplay {
                     .subject_attributes
                     .map
                     .iter()
-                    .map(|(k, v)| (k, std::str::from_utf8(v).unwrap_or("**binary**"))),
+                    .map(|(k, v)| (k, v.to_string())),
             )
             .finish()?;
 
