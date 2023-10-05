@@ -112,7 +112,7 @@ impl IdentityAttributesWriter for IdentitiesStorage {
     async fn put_attribute_value(
         &self,
         subject: &Identifier,
-        attribute_name: Vec<u8>,
+        attribute_name: String,
         attribute_value: Vec<u8>,
     ) -> Result<()> {
         let mut attributes = match self.get_attributes(subject).await? {

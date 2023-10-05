@@ -76,7 +76,7 @@ impl IdentityAttributesWriter for BootstrapedIdentityStore {
     async fn put_attribute_value(
         &self,
         subject: &Identifier,
-        attribute_name: Vec<u8>,
+        attribute_name: String,
         attribute_value: Vec<u8>,
     ) -> Result<()> {
         self.repository
@@ -168,7 +168,7 @@ impl PreTrustedIdentities {
             .map(|(identity_id, raw_attrs)| {
                 let attrs = raw_attrs
                     .into_iter()
-                    .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
+                    .map(|(k, v)| (k.clone(), v.as_bytes().to_vec()))
                     .collect();
                 (identity_id, AttributesEntry::new(attrs, now, None, None))
             })

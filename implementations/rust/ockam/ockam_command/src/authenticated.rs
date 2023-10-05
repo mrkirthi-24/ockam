@@ -103,12 +103,7 @@ fn print_entries(entries: &[(Identifier, AttributesEntry)]) {
             let attrs: HashMap<String, String> = entry
                 .attrs()
                 .iter()
-                .map(|(k, v)| {
-                    (
-                        String::from_utf8(k.clone()).unwrap(),
-                        String::from_utf8(v.clone()).unwrap(),
-                    )
-                })
+                .map(|(k, v)| (k.clone(), String::from_utf8(v.clone()).unwrap()))
                 .collect();
             (
                 String::from(identifier),

@@ -1,4 +1,3 @@
-use minicbor::bytes::ByteSlice;
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::utils::now;
 use ockam::identity::{identities, AttributesEntry};
@@ -30,7 +29,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let pre_trusted = HashMap::from([(
         member_identity.identifier().clone(),
         AttributesEntry::new(
-            BTreeMap::from([(b"attr".to_vec(), b"value".to_vec())]),
+            BTreeMap::from([("attr".to_string(), b"value".to_vec())]),
             now,
             None,
             None,
@@ -111,14 +110,11 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         data.credential_data
             .subject_attributes
             .map
-            .get::<ByteSlice>(b"trust_context_id".as_slice().into())
+            .get("trust_context_id")
     );
     assert_eq!(
         Some(&b"value".to_vec().into()),
-        data.credential_data
-            .subject_attributes
-            .map
-            .get::<ByteSlice>(b"attr".as_slice().into())
+        data.credential_data.subject_attributes.map.get("attr")
     );
     ctx.stop().await
 }

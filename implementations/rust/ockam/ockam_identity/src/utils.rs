@@ -30,7 +30,7 @@ pub fn add_seconds(timestamp: &TimestampInSeconds, seconds: u64) -> TimestampInS
 /// Convenient builder for the [`Attributes`] struct
 pub struct AttributesBuilder {
     schema_id: CredentialSchemaIdentifier,
-    map: BTreeMap<ByteVec, ByteVec>,
+    map: BTreeMap<String, ByteVec>,
 }
 
 impl AttributesBuilder {
@@ -43,8 +43,8 @@ impl AttributesBuilder {
     }
 
     /// Add an attributes to the [`Attributes`]
-    pub fn with_attribute(mut self, key: impl Into<Vec<u8>>, value: impl Into<Vec<u8>>) -> Self {
-        self.map.insert(key.into().into(), value.into().into());
+    pub fn with_attribute(mut self, key: &str, value: impl Into<Vec<u8>>) -> Self {
+        self.map.insert(key.to_string(), value.into().into());
 
         self
     }

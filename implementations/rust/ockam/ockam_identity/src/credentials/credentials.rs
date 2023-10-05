@@ -87,8 +87,8 @@ mod tests {
         let subject = creation.create_identity().await?;
         let credentials = identities.credentials();
 
-        let mut map: BTreeMap<ByteVec, ByteVec> = Default::default();
-        map.insert(b"key".to_vec().into(), b"value".to_vec().into());
+        let mut map: BTreeMap<String, ByteVec> = Default::default();
+        map.insert("key".to_string(), b"value".to_vec().into());
         let subject_attributes = Attributes {
             schema: CredentialSchemaIdentifier(1),
             map,

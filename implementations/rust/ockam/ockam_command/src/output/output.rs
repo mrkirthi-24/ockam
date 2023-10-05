@@ -540,12 +540,13 @@ impl fmt::Display for CredentialDisplay {
         )?;
 
         f.debug_map()
-            .entries(credential_data.subject_attributes.map.iter().map(|(k, v)| {
-                (
-                    std::str::from_utf8(k).unwrap_or("**binary**"),
-                    std::str::from_utf8(v).unwrap_or("**binary**"),
-                )
-            }))
+            .entries(
+                credential_data
+                    .subject_attributes
+                    .map
+                    .iter()
+                    .map(|(k, v)| (k, std::str::from_utf8(v).unwrap_or("**binary**"))),
+            )
             .finish()?;
 
         Ok(())

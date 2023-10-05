@@ -448,7 +448,7 @@ pub mod test_utils {
         let exported_identity = identity.export()?;
 
         let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-            .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
+            .with_attribute(TRUST_CONTEXT_ID, b"test_trust_context_id".to_vec())
             .build();
 
         let credential = secure_channels

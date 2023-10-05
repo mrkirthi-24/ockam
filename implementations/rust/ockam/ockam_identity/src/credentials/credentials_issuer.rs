@@ -17,10 +17,7 @@ use tracing::trace;
 
 /// Name of the attribute identifying the trust context for that attribute, meaning
 /// from which set of trusted authorities the attribute comes from
-pub const TRUST_CONTEXT_ID: &[u8] = b"trust_context_id";
-
-/// The same as above but in string format
-pub const TRUST_CONTEXT_ID_UTF8: &str = "trust_context_id";
+pub const TRUST_CONTEXT_ID: &str = "trust_context_id";
 
 /// Identifier for the schema of a project credential
 pub const PROJECT_MEMBER_SCHEMA: CredentialSchemaIdentifier = CredentialSchemaIdentifier(1);
@@ -45,7 +42,7 @@ impl CredentialsIssuer {
         trust_context: String,
     ) -> Self {
         let subject_attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-            .with_attribute(TRUST_CONTEXT_ID.to_vec(), trust_context.as_bytes().to_vec())
+            .with_attribute(TRUST_CONTEXT_ID, trust_context.as_bytes().to_vec())
             .build();
 
         Self {

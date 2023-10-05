@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 #[cbor(map)]
 pub struct AttributesEntry {
     // TODO: Check how it looks serialized with both serde and minicbor
-    #[b(1)] attrs: BTreeMap<Vec<u8>, Vec<u8>>,
+    #[b(1)] attrs: BTreeMap<String, Vec<u8>>,
     #[n(2)] added: TimestampInSeconds,
     #[n(3)] expires: Option<TimestampInSeconds>,
     #[n(4)] attested_by: Option<Identifier>,
@@ -23,7 +23,7 @@ impl AttributesEntry {
 
     /// Constructor
     pub fn new(
-        attrs: BTreeMap<Vec<u8>, Vec<u8>>,
+        attrs: BTreeMap<String, Vec<u8>>,
         added: TimestampInSeconds,
         expires: Option<TimestampInSeconds>,
         attested_by: Option<Identifier>,
@@ -36,8 +36,18 @@ impl AttributesEntry {
         }
     }
 
+    /// Get the number of attributes
+    pub fn len(&self) -> usize {
+        self.attrs.len()
+    }
+
+    /// Get an attribute value by name
+    pub fn get(&self, name: &str) -> Option<&Vec<u8>> {
+        self.attrs.get(name)
+    }
+
     /// The entry attributes
-    pub fn attrs(&self) -> &BTreeMap<Vec<u8>, Vec<u8>> {
+    pub fn attrs(&self) -> &BTreeMap<String, Vec<u8>> {
         &self.attrs
     }
 

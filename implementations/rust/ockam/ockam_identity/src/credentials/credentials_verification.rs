@@ -181,7 +181,7 @@ impl CredentialsVerification {
         let map = credential_data.credential_data.subject_attributes.map;
         let map: BTreeMap<_, _> = map
             .into_iter()
-            .map(|(k, v)| (Vec::<u8>::from(k), Vec::<u8>::from(v)))
+            .map(|(k, v)| (k, Vec::<u8>::from(v)))
             .collect();
 
         self.identities_repository

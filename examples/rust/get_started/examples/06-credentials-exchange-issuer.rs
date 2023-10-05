@@ -56,7 +56,7 @@ async fn main(ctx: Context) -> Result<()> {
     for identifier in known_identifiers.iter() {
         node.identities()
             .repository()
-            .put_attribute_value(identifier, b"cluster".to_vec(), b"production".to_vec())
+            .put_attribute_value(identifier, "cluster".to_string(), b"production".to_vec())
             .await?;
     }
 

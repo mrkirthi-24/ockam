@@ -1,6 +1,8 @@
 use crate::models::{ChangeHash, Identifier, TimestampInSeconds};
+use core::str::from_utf8;
 use minicbor::bytes::ByteVec;
-use minicbor::{Decode, Encode};
+use minicbor::encode::Write;
+use minicbor::{Decode, Decoder, Encode, Encoder};
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 use ockam_vault::{ECDSASHA256CurveP256Signature, EdDSACurve25519Signature};
 
@@ -59,5 +61,40 @@ pub struct Attributes {
     /// [`CredentialSchemaIdentifier`] that determines which keys&values to expect in the [`Attributes`]
     #[n(1)] pub schema: CredentialSchemaIdentifier,
     /// Set of keys&values
-    #[n(2)] pub map: BTreeMap<ByteVec, ByteVec>,
+    /// The values exchanged with the Controller are ByteVec for attribute names so we need to adapt
+    /// the encoding and decoding
+    #[cbor(decode_with = "decode_attributes")]
+    #[cbor(encode_with = "encode_attributes")]
+    #[n(2)] pub map: BTreeMap<String, ByteVec>,
+}
+
+fn decode_attributes<'b, Ctx>(
+    d: &mut Decoder<'b>,
+    _ctx: &mut Ctx,
+) -> Result<BTreeMap<String, ByteVec>, minicbor::decode::Error> {
+    let attributes: BTreeMap<ByteVec, ByteVec> = d.decode()?;
+    Ok(attributes
+        .iter()
+        .map(|(k, v)| {
+            (
+                from_utf8(k.as_slice())
+                    .unwrap_or("expected a string")
+                    .to_string(),
+                v.to_owned(),
+            )
+        })
+        .collect())
+}
+
+fn encode_attributes<Ctx, W: Write>(
+    v: &BTreeMap<String, ByteVec>,
+    e: &mut Encoder<W>,
+    _ctx: &mut Ctx,
+) -> Result<(), minicbor::encode::Error<W::Error>> {
+    let attributes: BTreeMap<ByteVec, ByteVec> = v
+        .iter()
+        .map(|(k, v)| (From::from(k.as_bytes().to_vec()), v.to_owned()))
+        .collect();
+    e.encode(attributes)?;
+    Ok(())
 }

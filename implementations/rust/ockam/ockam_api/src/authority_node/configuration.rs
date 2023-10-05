@@ -144,13 +144,13 @@ impl TrustedIdentity {
         project_identifier: String,
         authority_identifier: &Identifier,
     ) -> AttributesEntry {
-        let mut map: BTreeMap<Vec<u8>, Vec<u8>> = BTreeMap::new();
+        let mut map: BTreeMap<String, Vec<u8>> = BTreeMap::new();
         for (name, value) in self.attributes.clone().iter() {
-            map.insert(name.as_bytes().to_vec(), value.as_bytes().to_vec());
+            map.insert(name.clone(), value.as_bytes().to_vec());
         }
 
         map.insert(
-            TRUST_CONTEXT_ID.to_vec(),
+            TRUST_CONTEXT_ID.to_string(),
             project_identifier.as_bytes().to_vec(),
         );
         AttributesEntry::new(
