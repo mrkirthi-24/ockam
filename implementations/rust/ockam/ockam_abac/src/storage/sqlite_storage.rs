@@ -133,6 +133,7 @@ fn map_decode_err(err: minicbor::decode::Error) -> Error {
 mod test {
     use super::*;
     use core::str::FromStr;
+    use ockam_identity::storage::SqliteStorage;
     use tempfile::NamedTempFile;
 
     #[tokio::test]

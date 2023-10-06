@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use rusqlite::{Connection, OptionalExtension, Params, Row};
+use rusqlite::{Connection, OptionalExtension, Params, Row, Transaction};
 use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::Retry;
 use tracing::debug;
@@ -90,6 +90,17 @@ impl SqliteDb {
         Ok(rows_number)
     }
 
+    /// Run some statements within a transaction
+    pub fn with_transaction<F>(&self, f: F) -> Result<()>
+    where
+        F: FnOnce(&Transaction) -> Result<()>,
+    {
+        let mut connection = self.connection.lock().unwrap();
+        let transaction = connection.transaction().map_err(Self::map_sqlite_err)?;
+        f(&transaction)?;
+        transaction.commit().map_err(Self::map_sqlite_err)
+    }
+
     /// Query a table to get back one entity if it can be found
     /// If the query returns several entities, the entity corresponding to the first row is returned
     pub fn query_maybe_one<P: Params, R>(
@@ -136,11 +147,15 @@ impl SqliteDb {
         Ok(result.map_err(Self::map_sqlite_err)?)
     }
 
-    pub(crate) fn map_join_err(err: JoinError) -> Error {
+    pub fn map_join_err(err: JoinError) -> Error {
         Error::new(Origin::Application, Kind::Io, err)
     }
 
-    pub(crate) fn map_sqlite_err(err: rusqlite::Error) -> Error {
+    pub fn map_sqlite_err(err: rusqlite::Error) -> Error {
+        Error::new(Origin::Application, Kind::Io, err)
+    }
+
+    pub fn map_decode_err(err: minicbor::decode::Error) -> Error {
         Error::new(Origin::Application, Kind::Io, err)
     }
 }
