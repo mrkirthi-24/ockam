@@ -164,7 +164,6 @@ impl DefaultAddress {
     pub const UPPERCASE_SERVICE: &'static str = "uppercase";
     pub const ECHO_SERVICE: &'static str = "echo";
     pub const HOP_SERVICE: &'static str = "hop";
-    pub const CREDENTIALS_SERVICE: &'static str = "credentials";
     pub const SECURE_CHANNEL_LISTENER: &'static str = "api";
     pub const DIRECT_AUTHENTICATOR: &'static str = "direct_authenticator";
     pub const CREDENTIAL_ISSUER: &'static str = "credential_issuer";
@@ -184,7 +183,6 @@ impl DefaultAddress {
                 | Self::UPPERCASE_SERVICE
                 | Self::ECHO_SERVICE
                 | Self::HOP_SERVICE
-                | Self::CREDENTIALS_SERVICE
                 | Self::SECURE_CHANNEL_LISTENER
                 | Self::DIRECT_AUTHENTICATOR
                 | Self::CREDENTIAL_ISSUER
@@ -205,7 +203,6 @@ impl DefaultAddress {
             Self::UPPERCASE_SERVICE,
             Self::ECHO_SERVICE,
             Self::HOP_SERVICE,
-            Self::CREDENTIALS_SERVICE,
             Self::SECURE_CHANNEL_LISTENER,
             Self::DIRECT_AUTHENTICATOR,
             Self::CREDENTIAL_ISSUER,
@@ -304,9 +301,6 @@ mod test {
         assert!(DefaultAddress::is_valid(DefaultAddress::UPPERCASE_SERVICE));
         assert!(DefaultAddress::is_valid(DefaultAddress::ECHO_SERVICE));
         assert!(DefaultAddress::is_valid(DefaultAddress::HOP_SERVICE));
-        assert!(DefaultAddress::is_valid(
-            DefaultAddress::CREDENTIALS_SERVICE
-        ));
         assert!(DefaultAddress::is_valid(
             DefaultAddress::SECURE_CHANNEL_LISTENER
         ));

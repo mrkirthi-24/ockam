@@ -116,7 +116,7 @@ impl CommonStateMachine {
     /// Verify the identity sent by the other party: the Purpose Key and the credentials must be valid
     /// If everything is valid, store the identity identifier which will used to make the
     /// final state machine result
-    pub(super) async fn verify_identity(
+    pub(super) async fn process_identity_payload(
         &mut self,
         peer: IdentityAndCredentials,
         peer_public_key: &X25519PublicKey,
@@ -154,6 +154,7 @@ impl CommonStateMachine {
             }
         }
 
+        self.check_trust_policy(identity.identifier()).await?;
         self.verify_credentials(identity.identifier(), peer.credentials)
             .await?;
         self.their_identifier = Some(identity.identifier().clone());
@@ -162,11 +163,7 @@ impl CommonStateMachine {
 
     /// Verify that the credentials sent by the other party are valid using a trust context
     /// and store them
-    async fn verify_credentials(
-        &self,
-        their_identifier: &Identifier,
-        credentials: Vec<CredentialAndPurposeKey>,
-    ) -> Result<()> {
+    async fn check_trust_policy(&self, their_identifier: &Identifier) -> Result<()> {
         // check our TrustPolicy
         let trust_info = SecureChannelTrustInfo::new(their_identifier.clone());
         let trusted = self.trust_policy.check(&trust_info).await?;
@@ -179,9 +176,19 @@ impl CommonStateMachine {
             their_identifier
         );
 
+        Ok(())
+    }
+
+    /// Verify that the credentials sent by the other party are valid using a trust context
+    /// and store them
+    async fn verify_credentials(
+        &self,
+        their_identifier: &Identifier,
+        credentials: Vec<CredentialAndPurposeKey>,
+    ) -> Result<()> {
         if let Some(trust_context) = &self.trust_context {
             debug!(
-                "got a trust context to check the credentials. There are {} credentials to check",
+                "Got a trust context to check the credentials. There are {} credentials to check",
                 credentials.len()
             );
             for credential in &credentials {
@@ -191,7 +198,7 @@ impl CommonStateMachine {
                     .credentials_verification()
                     .receive_presented_credential(
                         their_identifier,
-                        &[trust_context.authority()?.identifier().clone()],
+                        &[trust_context.authority().clone()],
                         credential,
                     )
                     .await;
@@ -205,7 +212,7 @@ impl CommonStateMachine {
                 }
             }
         } else if !credentials.is_empty() {
-            warn!("no credentials have been received");
+            warn!("credentials were presented, but TrustContext is missing");
             // we cannot validate credentials without a trust context
             return Err(IdentityError::SecureChannelVerificationFailedMissingTrustContext.into());
         };

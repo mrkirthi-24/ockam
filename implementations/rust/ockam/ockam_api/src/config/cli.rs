@@ -6,9 +6,8 @@ use crate::config::{lookup::ConfigLookup, ConfigValues};
 use crate::error::ApiError;
 use crate::{cli_state, multiaddr_to_transport_route, DefaultAddress, HexByteVec};
 use ockam::identity::{
-    identities, AuthorityService, CredentialsMemoryRetriever, CredentialsRetriever, Identifier,
-    Identities, Identity, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo,
-    SecureChannels, TrustContext,
+    identities, CredentialsMemoryRetriever, CredentialsRetriever, Identifier, Identities, Identity,
+    RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo, SecureChannels, TrustContext,
 };
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Result, Route};
@@ -113,30 +112,25 @@ impl TrustContextConfig {
         &self,
         secure_channels: Arc<SecureChannels>,
         tcp_transport: Option<TcpTransport>,
-    ) -> Result<TrustContext> {
-        let authority = if let Some(authority_config) = self.authority.as_ref() {
-            let identity = authority_config.identity().await?;
-            let credential_retriever =
-                if let Some(retriever_type) = &authority_config.own_credential {
-                    Some(
-                        retriever_type
-                            .to_credential_retriever(secure_channels.clone(), tcp_transport)
-                            .await?,
-                    )
-                } else {
-                    None
-                };
-
-            Some(AuthorityService::new(
-                secure_channels.identities().credentials(),
-                identity.identifier().clone(),
-                credential_retriever,
-            ))
+    ) -> Result<(TrustContext, Option<Arc<dyn CredentialsRetriever>>)> {
+        let authority_config = self
+            .authority
+            .as_ref()
+            .ok_or(ApiError::core("authority config missing"))?;
+        let identity = authority_config.identity().await?;
+        let credential_retriever = if let Some(retriever_type) = &authority_config.own_credential {
+            Some(
+                retriever_type
+                    .to_credential_retriever(secure_channels.clone(), tcp_transport)
+                    .await?,
+            )
         } else {
             None
         };
 
-        Ok(TrustContext::new(self.id.to_string(), authority))
+        let trust_context = TrustContext::new(self.id.to_string(), identity.identifier().clone());
+
+        Ok((trust_context, credential_retriever))
     }
 
     pub fn from_authority_identity(

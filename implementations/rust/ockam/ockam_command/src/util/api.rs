@@ -12,8 +12,8 @@ use ockam::identity::Identifier;
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::{
-    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
-    StartHopServiceRequest, StartOktaIdentityProviderRequest,
+    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartHopServiceRequest,
+    StartOktaIdentityProviderRequest,
 };
 use ockam_api::nodes::*;
 use ockam_api::trust_context::TrustContextConfigBuilder;
@@ -137,16 +137,6 @@ pub(crate) fn start_hop_service(addr: &str) -> Request<StartHopServiceRequest> {
 pub(crate) fn start_authenticated_service(addr: &str) -> Request<StartAuthenticatedServiceRequest> {
     let payload = StartAuthenticatedServiceRequest::new(addr);
     Request::post(node_service(DefaultAddress::AUTHENTICATED_SERVICE)).body(payload)
-}
-
-/// Construct a request to start a Credential Service
-pub(crate) fn start_credentials_service(
-    public_identity: &str,
-    addr: &str,
-    oneway: bool,
-) -> Request<StartCredentialsService> {
-    let payload = StartCredentialsService::new(public_identity, addr, oneway);
-    Request::post(node_service(DefaultAddress::CREDENTIALS_SERVICE)).body(payload)
 }
 
 /// Construct a request to start an Authenticator Service

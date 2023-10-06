@@ -33,16 +33,6 @@ pub enum StartSubCommand {
         #[arg(long, default_value_t = authenticated_default_addr())]
         addr: String,
     },
-    Credentials {
-        #[arg(long)]
-        identity: String,
-
-        #[arg(long, default_value_t = credentials_default_addr())]
-        addr: String,
-
-        #[arg(long)]
-        oneway: bool,
-    },
     Authenticator {
         #[arg(long, default_value_t = authenticator_default_addr())]
         addr: String,
@@ -58,10 +48,6 @@ fn hop_default_addr() -> String {
 
 fn authenticated_default_addr() -> String {
     DefaultAddress::AUTHENTICATED_SERVICE.to_string()
-}
-
-fn credentials_default_addr() -> String {
-    DefaultAddress::CREDENTIALS_SERVICE.to_string()
 }
 
 fn authenticator_default_addr() -> String {
@@ -92,16 +78,6 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StartCommand) -> 
         StartSubCommand::Authenticated { addr, .. } => {
             let req = api::start_authenticated_service(&addr);
             start_service_impl(ctx, &node, "Authenticated", req).await?;
-            addr
-        }
-        StartSubCommand::Credentials {
-            identity,
-            addr,
-            oneway,
-            ..
-        } => {
-            let req = api::start_credentials_service(&identity, &addr, oneway);
-            start_service_impl(ctx, &node, "Credentials", req).await?;
             addr
         }
         StartSubCommand::Authenticator { addr, project, .. } => {

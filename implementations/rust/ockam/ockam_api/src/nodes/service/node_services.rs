@@ -2,7 +2,6 @@ use std::net::IpAddr;
 
 use minicbor::Decoder;
 
-use ockam::identity::{identities, AuthorityService, TrustContext};
 use ockam::{Address, Context, Result};
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::Resource;
@@ -23,13 +22,11 @@ use crate::kafka::{
 use crate::kafka::{OutletManagerService, PrefixRelayService};
 use crate::nodes::models::services::{
     DeleteServiceRequest, ServiceList, ServiceStatus, StartAuthenticatedServiceRequest,
-    StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
-    StartKafkaConsumerRequest, StartKafkaDirectRequest, StartKafkaOutletRequest,
-    StartKafkaProducerRequest, StartServiceRequest, StartUppercaseServiceRequest,
+    StartEchoerServiceRequest, StartHopServiceRequest, StartKafkaConsumerRequest,
+    StartKafkaDirectRequest, StartKafkaOutletRequest, StartKafkaProducerRequest,
+    StartServiceRequest, StartUppercaseServiceRequest,
 };
-use crate::nodes::registry::{
-    CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
-};
+use crate::nodes::registry::{KafkaServiceInfo, KafkaServiceKind, Registry};
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
 use crate::uppercase::Uppercase;
@@ -39,35 +36,6 @@ use crate::{actions, resources};
 use super::NodeManagerWorker;
 
 impl NodeManager {
-    pub(super) async fn start_credentials_service_impl<'a>(
-        &self,
-        ctx: &Context,
-        trust_context: TrustContext,
-        addr: Address,
-        oneway: bool,
-    ) -> Result<()> {
-        if self.registry.credentials_services.contains_key(&addr).await {
-            return Err(ApiError::core("Credentials service exists at this address"));
-        }
-
-        self.credentials_service()
-            .start(
-                ctx,
-                trust_context,
-                self.identifier().clone(),
-                addr.clone(),
-                !oneway,
-            )
-            .await?;
-
-        self.registry
-            .credentials_services
-            .insert(addr.clone(), CredentialsServiceInfo::default())
-            .await;
-
-        Ok(())
-    }
-
     pub(super) async fn start_authenticated_service_impl(
         &self,
         ctx: &Context,
@@ -222,39 +190,6 @@ impl NodeManagerWorker {
         Ok(Response::ok(req))
     }
 
-    pub(super) async fn start_credentials_service(
-        &self,
-        ctx: &Context,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
-    ) -> Result<Response, Response<Error>> {
-        let body: StartCredentialsService = dec.decode()?;
-        let addr: Address = body.address().into();
-        let oneway = body.oneway();
-        let encoded_identity = body.public_identity();
-
-        let decoded_identity =
-            &hex::decode(encoded_identity).map_err(|_| ApiError::core("Unable to decode trust context's public identity when starting credential service."))?;
-        let i = identities()
-            .identities_creation()
-            .import(None, decoded_identity)
-            .await?;
-
-        let trust_context = TrustContext::new(
-            encoded_identity.to_string(),
-            Some(AuthorityService::new(
-                self.node_manager.identities().credentials(),
-                i.identifier().clone(),
-                None,
-            )),
-        );
-
-        self.node_manager
-            .start_credentials_service_impl(ctx, trust_context, addr, oneway)
-            .await?;
-
-        Ok(Response::ok(req))
-    }
     pub(super) async fn start_kafka_outlet_service(
         &self,
         context: &Context,
@@ -718,17 +653,6 @@ impl NodeManagerWorker {
                 DefaultAddress::HOP_SERVICE,
             ))
         });
-        registry
-            .credentials_services
-            .keys()
-            .await
-            .iter()
-            .for_each(|addr| {
-                list.push(ServiceStatus::new(
-                    addr.address(),
-                    DefaultAddress::CREDENTIALS_SERVICE,
-                ))
-            });
         registry
             .kafka_services
             .entries()

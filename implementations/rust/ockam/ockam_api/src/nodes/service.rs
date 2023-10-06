@@ -11,13 +11,10 @@ use minicbor::{Decoder, Encode};
 
 pub use node_identities::*;
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::CredentialsServerModule;
-use ockam::identity::TrustContext;
 use ockam::identity::Vault;
-use ockam::identity::{
-    Credentials, CredentialsServer, Identities, IdentitiesRepository, IdentityAttributesReader,
-};
+use ockam::identity::{CredentialsRetriever, TrustContext};
 use ockam::identity::{Identifier, SecureChannels};
+use ockam::identity::{Identities, IdentitiesRepository, IdentityAttributesReader};
 use ockam::{
     Address, Context, RelayService, RelayServiceOptions, Result, Routed, TcpTransport, Worker,
 };
@@ -99,6 +96,7 @@ pub struct NodeManager {
     identifier: Identifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
     trust_context: Option<TrustContext>,
+    credential_retriever: Option<Arc<dyn CredentialsRetriever>>,
     pub(crate) registry: Registry,
     policies: Arc<dyn PolicyStorage>,
 }
@@ -122,14 +120,6 @@ impl NodeManager {
 
     pub(super) fn attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
         self.identities_repository().as_attributes_reader()
-    }
-
-    pub(super) fn credentials(&self) -> Arc<Credentials> {
-        self.identities().credentials()
-    }
-
-    pub(super) fn credentials_service(&self) -> Arc<dyn CredentialsServer> {
-        Arc::new(CredentialsServerModule::new(self.credentials()))
     }
 
     pub(super) fn secure_channels_vault(&self) -> Vault {
@@ -268,6 +258,12 @@ impl NodeManager {
             .as_ref()
             .ok_or_else(|| ApiError::core("Trust context doesn't exist"))
     }
+
+    pub(crate) fn credential_retriever(&self) -> Result<Arc<dyn CredentialsRetriever>> {
+        self.credential_retriever
+            .clone()
+            .ok_or_else(|| ApiError::core("CredentialsRetriever doesn't exist"))
+    }
 }
 
 pub struct NodeManagerGeneralOptions {
@@ -397,6 +393,7 @@ impl NodeManager {
             identifier: node_state.config().identifier()?,
             secure_channels,
             trust_context: None,
+            credential_retriever: None,
             registry: Default::default(),
             policies,
         };
@@ -414,13 +411,14 @@ impl NodeManager {
     }
 
     async fn configure_trust_context(&mut self, tc: &TrustContextConfig) -> Result<()> {
-        self.trust_context = Some(
-            tc.to_trust_context(
+        let (trust_context, credential_retriever) = tc
+            .to_trust_context(
                 self.secure_channels.clone(),
                 Some(self.tcp_transport.async_try_clone().await?),
             )
-            .await?,
-        );
+            .await?;
+        self.trust_context = Some(trust_context);
+        self.credential_retriever = credential_retriever;
 
         info!("NodeManager::configure_trust_context: trust context configured");
 
@@ -455,17 +453,6 @@ impl NodeManager {
             ctx,
         )
         .await?;
-
-        // If we've been configured with a trust context, we can start Credential Exchange service
-        if let Ok(tc) = self.trust_context() {
-            self.start_credentials_service_impl(
-                ctx,
-                tc.clone(),
-                DefaultAddress::CREDENTIALS_SERVICE.into(),
-                false,
-            )
-            .await?;
-        }
 
         Ok(())
     }
@@ -636,9 +623,6 @@ impl NodeManagerWorker {
                 .get_credential(req, dec, ctx)
                 .await?
                 .either(Response::to_vec, Response::to_vec)?,
-            (Post, ["node", "credentials", "actions", "present"]) => {
-                encode_response(self.present_credential(req, dec, ctx).await)?
-            }
 
             // ==*== Secure channels ==*==
             (Get, ["node", "secure_channel"]) => self.list_secure_channels(req).await.to_vec()?,
@@ -677,9 +661,6 @@ impl NodeManagerWorker {
             }
             (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
                 encode_response(self.start_hop_service(ctx, req, dec).await)?
-            }
-            (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => {
-                encode_response(self.start_credentials_service(ctx, req, dec).await)?
             }
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => {
                 self.start_kafka_outlet_service(ctx, req, dec).await?

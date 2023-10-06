@@ -114,9 +114,6 @@ pub(crate) struct HopServiceInfo {}
 #[derive(Default, Clone)]
 pub(crate) struct VerifierServiceInfo {}
 
-#[derive(Default, Clone)]
-pub(crate) struct CredentialsServiceInfo {}
-
 #[derive(Eq, PartialEq, Clone)]
 pub(crate) enum KafkaServiceKind {
     Consumer,
@@ -204,7 +201,6 @@ pub(crate) struct Registry {
     pub(crate) echoer_services: RegistryOf<Address, EchoerServiceInfo>,
     pub(crate) kafka_services: RegistryOf<Address, KafkaServiceInfo>,
     pub(crate) hop_services: RegistryOf<Address, HopServiceInfo>,
-    pub(crate) credentials_services: RegistryOf<Address, CredentialsServiceInfo>,
     pub(crate) relays: RegistryOf<String, RemoteRelayInfo>,
     pub(crate) inlets: RegistryOf<Alias, InletInfo>,
     pub(crate) outlets: RegistryOf<Alias, OutletInfo>,
