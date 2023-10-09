@@ -1,11 +1,8 @@
-use core::str::FromStr;
 use std::ops::Deref;
 use std::path::Path;
 
-use sqlx::database::HasArguments;
-use sqlx::encode::IsNull;
 use sqlx::sqlite::SqliteConnectOptions;
-use sqlx::{ConnectOptions, Database, Encode, FromRow, Row, Sqlite, SqlitePool, Type};
+use sqlx::{ConnectOptions, SqlitePool};
 use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::Retry;
 use tracing::debug;
@@ -13,8 +10,6 @@ use tracing::log::LevelFilter;
 
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-
-use crate::TimestampInSeconds;
 
 /// We use sqlx as our primary interface for interacting with the database
 /// The database driver is currently Sqlite
@@ -83,7 +78,7 @@ impl SqlxDb {
     }
 
     async fn migrate(&self) -> Result<()> {
-        sqlx::migrate!("./src/repository/db_migrations")
+        sqlx::migrate!("./src/database/migrations")
             .run(&self.pool)
             .await
             .map_err(Self::map_migrate_err)
@@ -114,6 +109,7 @@ impl<T> FromSqlxError<T> for core::result::Result<T, sqlx::error::Error> {
 
 #[cfg(test)]
 mod tests {
+    use sqlx::FromRow;
     use tempfile::NamedTempFile;
 
     use super::*;
@@ -173,69 +169,4 @@ mod tests {
 
     #[derive(FromRow, PartialEq, Eq, Debug)]
     struct IdentifierRow(String);
-}
-
-pub enum SqliteType {
-    Text(String),
-    Blob(Vec<u8>),
-    Int(i64),
-    Float(f64),
-}
-
-impl Type<Sqlite> for SqliteType {
-    fn type_info() -> <Sqlite as Database>::TypeInfo {
-        <Vec<u8> as Type<Sqlite>>::type_info()
-    }
-}
-
-impl Encode<'_, Sqlite> for SqliteType {
-    fn encode_by_ref(&self, buf: &mut <Sqlite as HasArguments>::ArgumentBuffer) -> IsNull {
-        match self {
-            SqliteType::Text(v) => <String as Encode<'_, Sqlite>>::encode_by_ref(v, buf),
-            SqliteType::Blob(v) => <Vec<u8> as Encode<'_, Sqlite>>::encode_by_ref(v, buf),
-            SqliteType::Int(v) => <i64 as Encode<'_, Sqlite>>::encode_by_ref(v, buf),
-            SqliteType::Float(v) => <f64 as Encode<'_, Sqlite>>::encode_by_ref(v, buf),
-        }
-    }
-
-    fn produces(&self) -> Option<<Sqlite as Database>::TypeInfo> {
-        Some(match self {
-            SqliteType::Text(_) => <String as Type<Sqlite>>::type_info(),
-            SqliteType::Blob(_) => <Vec<u8> as Type<Sqlite>>::type_info(),
-            SqliteType::Int(_) => <i64 as Type<Sqlite>>::type_info(),
-            SqliteType::Float(_) => <f64 as Type<Sqlite>>::type_info(),
-        })
-    }
-}
-
-pub trait AsSql {
-    fn as_sql(&self) -> SqliteType;
-}
-
-impl AsSql for String {
-    fn as_sql(&self) -> SqliteType {
-        SqliteType::Text(self.clone())
-    }
-}
-
-impl AsSql for u64 {
-    fn as_sql(&self) -> SqliteType {
-        SqliteType::Int(*self as i64)
-    }
-}
-
-impl AsSql for Vec<u8> {
-    fn as_sql(&self) -> SqliteType {
-        SqliteType::Blob(self.clone())
-    }
-}
-
-pub trait FromSql<T> {
-    fn from_sql(self) -> T;
-}
-
-impl FromSql<TimestampInSeconds> for u64 {
-    fn from_sql(self) -> TimestampInSeconds {
-        TimestampInSeconds(self)
-    }
 }

@@ -78,6 +78,6 @@ pub mod secure_channels;
 /// Storage functions
 pub mod storage;
 
-mod repository;
+mod database;
 /// Vault
 pub mod vault;

@@ -1,6 +1,5 @@
 mod attributes_entry;
 mod identities_repository_impl;
-mod identities_repository_sqlite_impl;
 mod identities_repository_sqlx_impl;
 mod identities_repository_trait;
 

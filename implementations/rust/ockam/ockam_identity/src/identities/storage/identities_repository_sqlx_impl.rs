@@ -7,22 +7,23 @@ use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 
+use crate::database::{FromSqlxError, SqlxDb, SqlxType, ToSqlxType};
 use crate::models::{ChangeHistory, Identifier};
-use crate::repository::{AsSql, FromSqlxError, SqliteType, SqlxDb};
 use crate::utils::now;
 use crate::{
     AttributesEntry, IdentitiesReader, IdentitiesRepository, IdentitiesWriter,
     IdentityAttributesReader, IdentityAttributesWriter, TimestampInSeconds,
 };
 
-/// Implementation of `IdentityAttributes` trait based on an underlying `Storage`
+/// Implementation of `IdentitiesRepository` trait based on an underlying database
+/// using sqlx as its API, and Sqlite as its driver
 #[derive(Clone)]
-pub struct IdentitiesSqlxRepository {
+pub struct IdentitiesSqlxDatabase {
     db: Arc<SqlxDb>,
 }
 
 #[async_trait]
-impl IdentitiesRepository for IdentitiesSqlxRepository {
+impl IdentitiesRepository for IdentitiesSqlxDatabase {
     fn as_attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
         Arc::new(self.clone())
     }
@@ -40,23 +41,23 @@ impl IdentitiesRepository for IdentitiesSqlxRepository {
     }
 }
 
-impl IdentitiesSqlxRepository {
-    /// Create a new repository
+impl IdentitiesSqlxDatabase {
+    /// Create a new database
     pub fn new(db: Arc<SqlxDb>) -> Self {
         Self { db }
     }
 
-    /// Create a new in-memory repository
+    /// Create a new in-memory database
     pub async fn create() -> Result<Arc<Self>> {
         Ok(Arc::new(Self::new(Arc::new(SqlxDb::in_memory().await?))))
     }
 }
 
 #[async_trait]
-impl IdentityAttributesReader for IdentitiesSqlxRepository {
+impl IdentityAttributesReader for IdentitiesSqlxDatabase {
     async fn get_attributes(&self, identity: &Identifier) -> Result<Option<AttributesEntry>> {
         let query = query_as("SELECT * FROM identity_attributes WHERE identifier=$1")
-            .bind(identity.as_sql());
+            .bind(identity.to_sql());
         let identity_attributes: Option<IdentityAttributesRow> =
             query.fetch_optional(&self.db.pool).await.into_core()?;
         Ok(identity_attributes.map(|r| r.attributes()).transpose()?)
@@ -74,14 +75,14 @@ impl IdentityAttributesReader for IdentitiesSqlxRepository {
 }
 
 #[async_trait]
-impl IdentityAttributesWriter for IdentitiesSqlxRepository {
+impl IdentityAttributesWriter for IdentitiesSqlxDatabase {
     async fn put_attributes(&self, sender: &Identifier, entry: AttributesEntry) -> Result<()> {
         let query = query("INSERT OR REPLACE INTO identity_attributes VALUES (?, ?, ?, ?, ?)")
-            .bind(sender.as_sql())
-            .bind(minicbor::to_vec(entry.attrs())?.as_sql())
-            .bind(entry.added().as_sql())
-            .bind(entry.expires().map(|e| e.as_sql()))
-            .bind(entry.attested_by().map(|e| e.as_sql()));
+            .bind(sender.to_sql())
+            .bind(minicbor::to_vec(entry.attrs())?.to_sql())
+            .bind(entry.added().to_sql())
+            .bind(entry.expires().map(|e| e.to_sql()))
+            .bind(entry.attested_by().map(|e| e.to_sql()));
         query.execute(&self.db.pool).await.map(|_| ()).into_core()
     }
 
@@ -107,30 +108,30 @@ impl IdentityAttributesWriter for IdentitiesSqlxRepository {
 
     async fn delete(&self, identity: &Identifier) -> Result<()> {
         let query =
-            query("DELETE FROM identity_attributes WHERE identifier = ?").bind(identity.as_sql());
+            query("DELETE FROM identity_attributes WHERE identifier = ?").bind(identity.to_sql());
         query.execute(&self.db.pool).await.map(|_| ()).into_core()
     }
 }
 
 #[async_trait]
-impl IdentitiesWriter for IdentitiesSqlxRepository {
+impl IdentitiesWriter for IdentitiesSqlxDatabase {
     async fn update_identity(
         &self,
         identifier: &Identifier,
         change_history: &ChangeHistory,
     ) -> Result<()> {
         let query = query("INSERT INTO identity VALUES (?, ?)")
-            .bind(identifier.as_sql())
-            .bind(change_history.as_sql());
+            .bind(identifier.to_sql())
+            .bind(change_history.to_sql());
         query.execute(&self.db.pool).await.map(|_| ()).into_core()
     }
 }
 
 #[async_trait]
-impl IdentitiesReader for IdentitiesSqlxRepository {
+impl IdentitiesReader for IdentitiesSqlxDatabase {
     async fn retrieve_identity(&self, identifier: &Identifier) -> Result<Option<ChangeHistory>> {
         let query =
-            query_as("SELECT * FROM identity WHERE identifier=$1").bind(identifier.as_sql());
+            query_as("SELECT * FROM identity WHERE identifier=$1").bind(identifier.to_sql());
         let identity_row: Option<IdentityRow> =
             query.fetch_optional(&self.db.pool).await.into_core()?;
         identity_row.map(|r| r.to_change_history()).transpose()
@@ -171,36 +172,36 @@ impl IdentityAttributesRow {
     }
 }
 
-impl AsSql for Identifier {
-    fn as_sql(&self) -> SqliteType {
-        self.to_string().as_sql()
+impl ToSqlxType for Identifier {
+    fn to_sql(&self) -> SqlxType {
+        self.to_string().to_sql()
     }
 }
 
-impl AsSql for TimestampInSeconds {
-    fn as_sql(&self) -> SqliteType {
-        self.0.as_sql()
+impl ToSqlxType for TimestampInSeconds {
+    fn to_sql(&self) -> SqlxType {
+        self.0.to_sql()
     }
 }
 
-impl AsSql for ChangeHistory {
-    fn as_sql(&self) -> SqliteType {
-        self.export().unwrap().as_sql()
+impl ToSqlxType for ChangeHistory {
+    fn to_sql(&self) -> SqlxType {
+        self.export().unwrap().to_sql()
     }
 }
 
 #[derive(sqlx::FromRow)]
-struct IdentityRow {
+pub(crate) struct IdentityRow {
     identifier: String,
     change_history: Vec<u8>,
 }
 
 impl IdentityRow {
-    fn to_identifier(&self) -> Result<Identifier> {
+    pub(crate) fn to_identifier(&self) -> Result<Identifier> {
         Identifier::from_str(&self.identifier)
     }
 
-    fn to_change_history(&self) -> Result<ChangeHistory> {
+    pub(crate) fn to_change_history(&self) -> Result<ChangeHistory> {
         ChangeHistory::import(self.change_history.as_slice())
     }
 }
@@ -252,7 +253,6 @@ mod tests {
     #[tokio::test]
     async fn test_identities_attributes_repository() -> Result<()> {
         let identity1 = create_identity1().await?;
-        let identity2 = create_identity2().await?;
         let attributes = create_attributes_entry().await?;
         let db_file = NamedTempFile::new().unwrap();
         let repository = create_repository(db_file.path()).await?;
@@ -272,7 +272,7 @@ mod tests {
         assert_eq!(result, Some(attributes));
 
         // delete attributes
-        let result = repository.delete(identity1.identifier()).await?;
+        let _ = repository.delete(identity1.identifier()).await?;
         let result = repository.get_attributes(identity1.identifier()).await?;
         assert_eq!(result, None);
 
@@ -364,6 +364,6 @@ mod tests {
 
     async fn create_repository(path: &Path) -> Result<Arc<dyn IdentitiesRepository>> {
         let db = SqlxDb::create(path).await?;
-        Ok(Arc::new(IdentitiesSqlxRepository::new(Arc::new(db))))
+        Ok(Arc::new(IdentitiesSqlxDatabase::new(Arc::new(db))))
     }
 }
