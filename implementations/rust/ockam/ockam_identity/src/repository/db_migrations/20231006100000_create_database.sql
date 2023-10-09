@@ -4,8 +4,8 @@ CREATE TABLE identity (
 );
 
 CREATE TABLE identity_attributes (
-  identifier TEXT,
-  attributes BLOB
+  identifier TEXT PRIMARY KEY,
+  attributes BLOB,
   added INTEGER NOT NULL,
   expires INTEGER,
   attested_by TEXT

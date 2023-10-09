@@ -2,17 +2,19 @@ use core::str::FromStr;
 use std::ops::Deref;
 use std::path::Path;
 
-use sqlx::sqlite::SqliteRow;
-use sqlx::{Database, Encode, FromRow, Row, SqlitePool, Type};
+use sqlx::database::HasArguments;
+use sqlx::encode::IsNull;
+use sqlx::sqlite::SqliteConnectOptions;
+use sqlx::{ConnectOptions, Database, Encode, FromRow, Row, Sqlite, SqlitePool, Type};
 use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::Retry;
 use tracing::debug;
+use tracing::log::LevelFilter;
 
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_node::tokio::task::JoinError;
 
-use crate::Identifier;
+use crate::TimestampInSeconds;
 
 /// We use sqlx as our primary interface for interacting with the database
 /// The database driver is currently Sqlite
@@ -64,10 +66,13 @@ impl SqlxDb {
     }
 
     async fn create_connection_pool(path: &Path) -> Result<SqlitePool> {
-        let connection = SqlitePool::connect(path.to_str().unwrap())
+        let options = SqliteConnectOptions::new()
+            .filename(path)
+            .log_statements(LevelFilter::Debug);
+        let pool = SqlitePool::connect_with(options)
             .await
             .map_err(Self::map_sql_err)?;
-        Ok(connection)
+        Ok(pool)
     }
 
     async fn create_in_memory_connection_pool() -> Result<SqlitePool> {
@@ -88,17 +93,30 @@ impl SqlxDb {
         Error::new(Origin::Application, Kind::Io, err)
     }
 
+    pub fn map_decode_err(err: minicbor::decode::Error) -> Error {
+        Error::new(Origin::Application, Kind::Io, err)
+    }
+
     pub fn map_migrate_err(err: sqlx::migrate::MigrateError) -> Error {
         Error::new(Origin::Application, Kind::Io, err)
     }
 }
 
+pub trait FromSqlxError<T> {
+    fn into_core(self) -> Result<T>;
+}
+
+impl<T> FromSqlxError<T> for core::result::Result<T, sqlx::error::Error> {
+    fn into_core(self) -> Result<T> {
+        self.map_err(|e| Error::new(Origin::Application, Kind::Io, e))
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::Identifier;
-    use core::str::FromStr;
     use tempfile::NamedTempFile;
+
+    use super::*;
 
     /// This is a sanity check to test that the database can be created with a file path
     /// and that migrations are running ok, at least for one table
@@ -129,7 +147,7 @@ mod tests {
             .unwrap();
 
         // successful query
-        let result: Option<Identifier> =
+        let result: Option<IdentifierRow> =
             sqlx::query_as("SELECT identifier FROM identity WHERE identifier=?1")
                 .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")
                 .fetch_optional(&db.pool)
@@ -137,11 +155,13 @@ mod tests {
                 .unwrap();
         assert_eq!(
             result,
-            Some(Identifier::from_str("Ifa804b7fca12a19eed206ae180b5b576860ae651").unwrap())
+            Some(IdentifierRow(
+                "Ifa804b7fca12a19eed206ae180b5b576860ae651".into()
+            ))
         );
 
         // failed query
-        let result: Option<Identifier> =
+        let result: Option<IdentifierRow> =
             sqlx::query_as("SELECT identifier FROM identity WHERE identifier=?1")
                 .bind("x")
                 .fetch_optional(&db.pool)
@@ -150,13 +170,72 @@ mod tests {
         assert_eq!(result, None);
         Ok(())
     }
+
+    #[derive(FromRow, PartialEq, Eq, Debug)]
+    struct IdentifierRow(String);
 }
 
-impl FromRow<'_, SqliteRow> for Identifier {
-    fn from_row(row: &SqliteRow) -> std::result::Result<Self, sqlx::Error> {
-        Identifier::from_str(row.get("identifier")).map_err(|e| sqlx::Error::ColumnDecode {
-            index: "identifier".to_string(),
-            source: e.into(),
+pub enum SqliteType {
+    Text(String),
+    Blob(Vec<u8>),
+    Int(i64),
+    Float(f64),
+}
+
+impl Type<Sqlite> for SqliteType {
+    fn type_info() -> <Sqlite as Database>::TypeInfo {
+        <Vec<u8> as Type<Sqlite>>::type_info()
+    }
+}
+
+impl Encode<'_, Sqlite> for SqliteType {
+    fn encode_by_ref(&self, buf: &mut <Sqlite as HasArguments>::ArgumentBuffer) -> IsNull {
+        match self {
+            SqliteType::Text(v) => <String as Encode<'_, Sqlite>>::encode_by_ref(v, buf),
+            SqliteType::Blob(v) => <Vec<u8> as Encode<'_, Sqlite>>::encode_by_ref(v, buf),
+            SqliteType::Int(v) => <i64 as Encode<'_, Sqlite>>::encode_by_ref(v, buf),
+            SqliteType::Float(v) => <f64 as Encode<'_, Sqlite>>::encode_by_ref(v, buf),
+        }
+    }
+
+    fn produces(&self) -> Option<<Sqlite as Database>::TypeInfo> {
+        Some(match self {
+            SqliteType::Text(_) => <String as Type<Sqlite>>::type_info(),
+            SqliteType::Blob(_) => <Vec<u8> as Type<Sqlite>>::type_info(),
+            SqliteType::Int(_) => <i64 as Type<Sqlite>>::type_info(),
+            SqliteType::Float(_) => <f64 as Type<Sqlite>>::type_info(),
         })
+    }
+}
+
+pub trait AsSql {
+    fn as_sql(&self) -> SqliteType;
+}
+
+impl AsSql for String {
+    fn as_sql(&self) -> SqliteType {
+        SqliteType::Text(self.clone())
+    }
+}
+
+impl AsSql for u64 {
+    fn as_sql(&self) -> SqliteType {
+        SqliteType::Int(*self as i64)
+    }
+}
+
+impl AsSql for Vec<u8> {
+    fn as_sql(&self) -> SqliteType {
+        SqliteType::Blob(self.clone())
+    }
+}
+
+pub trait FromSql<T> {
+    fn from_sql(self) -> T;
+}
+
+impl FromSql<TimestampInSeconds> for u64 {
+    fn from_sql(self) -> TimestampInSeconds {
+        TimestampInSeconds(self)
     }
 }
