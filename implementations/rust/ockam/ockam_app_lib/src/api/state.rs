@@ -30,6 +30,7 @@ pub mod rust {
         pub id: String,
         pub service_name: String,
         pub service_scheme: Option<String>,
+        pub accepting: bool,
     }
 
     #[derive(Default, Clone, Debug)]
@@ -44,11 +45,13 @@ pub mod rust {
 
     #[derive(Default, Clone, Debug)]
     pub struct Service {
+        pub id: String,
         pub source_name: String,
-        pub address: String,
-        pub port: u16,
+        pub address: Option<String>,
+        pub port: Option<u16>,
         pub scheme: Option<String>,
         pub available: bool,
+        pub enabled: bool,
     }
 
     #[derive(Default, Clone, Debug)]
@@ -56,7 +59,6 @@ pub mod rust {
         pub email: String,
         pub name: Option<String>,
         pub image_url: Option<String>,
-
         pub invites: Vec<Invite>,
         pub incoming_services: Vec<Service>,
     }
@@ -69,7 +71,6 @@ pub mod rust {
         pub enrollment_email: Option<String>,
         pub enrollment_image: Option<String>,
         pub enrollment_github_user: Option<String>,
-
         pub local_services: Vec<LocalService>,
         pub groups: Vec<ServiceGroup>,
     }
@@ -109,6 +110,7 @@ pub mod c {
         pub(super) service_name: *const c_char,
         /// Optional
         pub(super) service_scheme: *const c_char,
+        pub(super) accepting: u8,
     }
 
     #[repr(C)]
@@ -124,12 +126,14 @@ pub mod c {
 
     #[repr(C)]
     pub struct Service {
+        pub(super) id: *const c_char,
         pub(super) source_name: *const c_char,
         pub(super) address: *const c_char,
         pub(super) port: u16,
         /// Optional
         pub(super) scheme: *const c_char,
         pub(super) available: u8,
+        pub(super) enabled: u8,
     }
 
     #[repr(C)]
@@ -177,6 +181,7 @@ fn invite_to_c(invite: rust::Invite) -> *const c::Invite {
         id: to_c_string(invite.id),
         service_name: to_c_string(invite.service_name),
         service_scheme: to_optional_c_string(invite.service_scheme),
+        accepting: invite.accepting as u8,
     };
     Box::into_raw(Box::new(invite_c))
 }
@@ -200,11 +205,13 @@ fn local_service_to_c(local_service: rust::LocalService) -> *const c::LocalServi
 }
 fn service_to_c(service: rust::Service) -> *const c::Service {
     let service_c = c::Service {
+        id: to_c_string(service.id),
         source_name: to_c_string(service.source_name),
-        address: to_c_string(service.address),
-        port: service.port,
+        address: to_optional_c_string(service.address),
+        port: service.port.unwrap_or(0),
         scheme: to_optional_c_string(service.scheme),
         available: service.available as u8,
+        enabled: service.enabled as u8,
     };
     Box::into_raw(Box::new(service_c))
 }

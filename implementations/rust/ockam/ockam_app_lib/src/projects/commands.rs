@@ -1,10 +1,10 @@
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, trace, warn};
 
 use ockam_api::cloud::project::Projects;
 use ockam_api::{cli_state::StateDirTrait, cloud::project::Project, identity::EnrollmentTicket};
 
 use super::error::{Error, Result};
-use crate::projects::error::Error::{InternalFailure, ListingFailed, StateSaveFailed};
+use crate::projects::error::Error::{InternalFailure, ListingFailed};
 use crate::state::AppState;
 
 // Store the user's admin projects
@@ -39,7 +39,7 @@ impl AppState {
     }
 
     pub(crate) async fn refresh_projects(&self) -> Result<()> {
-        info!("Refreshing projects");
+        debug!("Refreshing projects");
         if !self.is_enrolled().await.unwrap_or(false) {
             return Ok(());
         }

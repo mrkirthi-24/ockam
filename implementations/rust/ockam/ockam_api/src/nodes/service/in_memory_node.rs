@@ -6,6 +6,7 @@ use rand::random;
 
 use ockam::{Context, Result, TcpTransport};
 use ockam_core::compat::{string::String, sync::Arc};
+use ockam_core::errcode::Kind;
 use ockam_transport_tcp::TcpListenerOptions;
 
 use crate::cli_state::{add_project_info_to_node_state, init_node_state, CliState};
@@ -142,7 +143,15 @@ impl InMemoryNode {
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
         self.medic_handle.stop_medic(ctx).await?;
         for addr in DefaultAddress::iter() {
-            ctx.stop_worker(addr).await?;
+            let result = ctx.stop_worker(addr).await;
+            // when stopping we can safely ignoring missing services
+            if let Err(err) = result {
+                if err.code().kind == Kind::NotFound {
+                    continue;
+                } else {
+                    return Err(err);
+                }
+            }
         }
         Ok(())
     }

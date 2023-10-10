@@ -2,21 +2,18 @@ mod model;
 mod repository;
 
 use std::collections::HashSet;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
-use std::thread::spawn;
 use std::time::Duration;
 
-use miette::IntoDiagnostic;
+use miette::{IntoDiagnostic, WrapErr};
 use ockam_multiaddr::MultiAddr;
 use tokio::sync::RwLock;
-use tracing::{error, info, trace, warn};
+use tracing::{error, info, warn};
 
 use crate::api::notification::rust::{Notification, NotificationCallback};
 use crate::api::state::rust::{ApplicationStateCallback, Invite, Invitee, Service, ServiceGroup};
 use crate::background_node::{BackgroundNodeClient, Cli};
-use crate::invitations::state::InvitationState;
+use crate::invitations::state::{InvitationState, ReceivedInvitationStatus};
 pub(crate) use crate::state::model::ModelState;
 pub(crate) use crate::state::repository::{LmdbModelStateRepository, ModelStateRepository};
 use ockam::Context;
@@ -32,7 +29,7 @@ use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, Tr
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
-use ockam_api::nodes::{InMemoryNode, NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_api::nodes::{InMemoryNode, NodeManager, NODEMANAGER_ADDR};
 use ockam_api::trust_context::TrustContextConfigBuilder;
 
 use crate::api::state::OrchestratorStatus;
@@ -150,7 +147,7 @@ impl AppState {
                         if let Err(e) = result {
                             warn!(%e, "Failed to refresh inlets");
                         }
-                        tokio::time::sleep(Duration::from_secs(5)).await;
+                        tokio::time::sleep(Duration::from_secs(15)).await;
                     }
                 });
 
@@ -163,9 +160,17 @@ impl AppState {
         }
     }
 
+    /// Asynchronously shutdown the application
     pub fn shutdown(&self) -> () {
-        let mut context = self.context();
-        self.context.runtime().spawn(async move {
+        let context = self.context();
+        let runtime = self.context.runtime();
+        let this = self.clone();
+        runtime.spawn(async move {
+            let result = this.node_manager.write().await.stop(&context).await;
+            if let Err(e) = result {
+                error!(?e, "Failed to shutdown the node manager")
+            }
+
             let result = context.stop().await;
             match result {
                 Ok(_) => info!("Application shutdown"),
@@ -177,11 +182,6 @@ impl AppState {
     pub async fn reset(&self) -> miette::Result<()> {
         self.reset_state().await?;
         self.reset_node_manager().await?;
-
-        // {
-        //     let mut writer = self.event_manager.write().unwrap();
-        //     writer.events.clear();
-        // }
 
         // recreate the model state repository since the cli state has changed
         {
@@ -199,6 +199,8 @@ impl AppState {
             let mut writer = self.model_state_repository.write().await;
             *writer = Arc::new(new_state_repository);
         }
+        self.update_orchestrator_status(OrchestratorStatus::default());
+        self.publish_state().await;
 
         Ok(())
     }
@@ -219,7 +221,12 @@ impl AppState {
     /// child workers as described in its Worker trait implementation.
     pub async fn reset_node_manager(&self) -> miette::Result<()> {
         let mut node_manager = self.node_manager.write().await;
-        let _ = node_manager.stop(&self.context).await;
+        node_manager
+            .stop(&self.context)
+            .await
+            .into_diagnostic()
+            .wrap_err("Failed to stop the node manager")?;
+
         info!("stopped the old node manager");
 
         for w in self.context.list_workers().await.into_diagnostic()? {
@@ -270,7 +277,7 @@ impl AppState {
     /// Return a client to access the Controller
     pub async fn controller(&self) -> Result<Controller> {
         let node_manager = self.node_manager.read().await;
-        Ok(node_manager.controller().await?)
+        Ok(node_manager.create_controller().await?)
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {
@@ -334,10 +341,13 @@ impl AppState {
     /// Sends the new application state to the UI
     pub async fn publish_state(&self) {
         let result = self.snapshot().await;
-        if let Ok(app_state) = result {
-            self.application_state_callback.call(app_state);
-        } else {
-            warn!("Failed to publish the application state");
+        match result {
+            Ok(state) => {
+                self.application_state_callback.call(state);
+            }
+            Err(e) => {
+                warn!(%e, "Failed to publish the application state");
+            }
         }
     }
 
@@ -411,6 +421,13 @@ impl AppState {
                             id: invitation.id.clone(),
                             service_name: invitation.target_id.clone(),
                             service_scheme: None,
+                            accepting: invitations
+                                .received
+                                .status
+                                .iter()
+                                .find(|(id, _)| id == &invitation.id)
+                                .map(|(_, status)| status == &ReceivedInvitationStatus::Accepting)
+                                .unwrap_or(false),
                         })
                         .collect(),
                     incoming_services: invitations
@@ -420,29 +437,22 @@ impl AppState {
                         .filter(|invitation| {
                             invitation.invitation.owner_email == email
                                 && invitation.service_access_details.is_some()
-                                && invitations
-                                    .accepted
-                                    .inlets
-                                    .get(&invitation.invitation.id)
-                                    .is_some()
                         })
                         .map(|invitation| {
                             let access_details =
                                 invitation.service_access_details.as_ref().unwrap();
-                            let inlet = invitations
-                                .accepted
-                                .inlets
-                                .get(&invitation.invitation.id)
-                                .unwrap();
+                            let inlet = invitations.accepted.inlets.get(&invitation.invitation.id);
 
                             Service {
+                                id: invitation.invitation.id.clone(),
                                 source_name: access_details
                                     .service_name()
                                     .unwrap_or("unknown".to_string()),
-                                address: inlet.socket_addr.ip().to_string(),
-                                port: inlet.socket_addr.port(),
+                                address: inlet.map(|inlet| inlet.socket_addr.ip().to_string()),
+                                port: inlet.map(|inlet| inlet.socket_addr.port()),
                                 scheme: None,
-                                available: inlet.enabled,
+                                available: inlet.is_some(),
+                                enabled: inlet.map(|inlet| inlet.enabled).unwrap_or(true),
                             }
                         })
                         .collect(),
@@ -517,7 +527,7 @@ pub(crate) async fn make_node_manager(
 
     let node_manager = InMemoryNode::new(
         &ctx,
-        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), None, true),
+        NodeManagerGeneralOptions::new(cli_state.clone(), NODE_NAME.to_string(), None, true, true),
         NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
         NodeManagerTrustOptions::new(trust_context_config),
     )
@@ -542,110 +552,5 @@ async fn create_model_state_repository(state: &CliState) -> Arc<dyn ModelStateRe
             error!(%e, "Cannot create a model state repository manager");
             panic!("Cannot create a model state repository manager: {e:?}");
         }
-    }
-}
-
-pub type EventName = String;
-type IsProcessing = AtomicBool;
-struct Event {
-    name: EventName,
-    is_processing: IsProcessing,
-}
-
-struct EventManager {
-    events: Vec<Event>,
-}
-
-impl EventManager {
-    fn new() -> Self {
-        Self { events: Vec::new() }
-    }
-
-    /// Add a new event if it doesn't exist
-    fn add(&mut self, event_name: &str) {
-        if self.events.iter().any(|e| e.name == event_name) {
-            return;
-        }
-        let event = Event {
-            name: event_name.to_string(),
-            is_processing: AtomicBool::new(true),
-        };
-        self.events.push(event);
-        trace!(%event_name, "New event registered");
-    }
-
-    /// Check if it's being processed
-    fn is_processing(&mut self, event_name: &str) -> bool {
-        match self.events.iter().find(|e| e.name == event_name) {
-            Some(e) => {
-                let is_processing = e.is_processing.load(Ordering::SeqCst);
-                if !is_processing {
-                    e.is_processing.store(true, Ordering::SeqCst);
-                }
-                trace!(%event_name, is_processing, "Event status");
-                is_processing
-            }
-            None => {
-                self.add(event_name);
-                false
-            }
-        }
-    }
-
-    /// Reset an event after it's been dropped
-    fn reset(&self, event_name: &str, processed: bool) {
-        if let Some(e) = self.events.iter().find(|e| e.name == event_name) {
-            if processed {
-                trace!(%event_name, "Event reset");
-                e.is_processing.store(false, Ordering::SeqCst);
-            }
-        }
-    }
-}
-//
-// pub struct EventDebouncer<R: Runtime> {
-//     app: AppHandle<R>,
-//     event_name: EventName,
-//     is_processing: bool,
-// }
-//
-// impl<R: Runtime> EventDebouncer<R> {
-//     pub fn is_processing(&self) -> bool {
-//         self.is_processing
-//     }
-// }
-//
-// impl<R: Runtime> Drop for EventDebouncer<R> {
-//     fn drop(&mut self) {
-//         let state = self.app.state::<AppState>();
-//         let reader = state.event_manager.read().unwrap();
-//         reader.reset(&self.event_name, !self.is_processing);
-//     }
-// }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_event_manager() {
-        let mut event_manager = EventManager::new();
-        let event_name = "e1";
-
-        // The first call using an unregistered event will register it and return false
-        assert!(!event_manager.is_processing(event_name));
-
-        // The second call will return true, as the event has not been marked as processed
-        assert!(event_manager.is_processing(event_name));
-
-        // Resetting the event marking it as unprocessed will leave the event as processing
-        event_manager.reset(event_name, false);
-        assert!(event_manager.is_processing(event_name));
-
-        // Resetting the event marking it as processed will leave the event as processed
-        event_manager.reset(event_name, true);
-
-        // The event is now ready to get processed again
-        assert!(!event_manager.is_processing(event_name));
     }
 }

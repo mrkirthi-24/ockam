@@ -1,48 +1,166 @@
 import Foundation
 import UserNotifications
 
-struct Invitee: Identifiable {
-    let name: Optional<String>
+class Invitee: Identifiable, Hashable, Equatable, ObservableObject {
+    @Published var name: Optional<String>
     let email: String
-    
+
     var id: String { email }
+
+    init(name: String?, email: String) {
+    	self.name = name
+        self.email = email
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(email)
+    }
+
+    static func == (lhs: Invitee, rhs: Invitee) -> Bool {
+        return lhs.name == rhs.name &&
+               lhs.email == rhs.email
+    }
 }
 
-struct Invite: Identifiable {
-    let id: String
-    let serviceName: String
-    let serviceScheme: String?
-}
+class Invite: Identifiable, Hashable, Equatable, ObservableObject {
+     let id: String
+     @Published var serviceName: String
+     @Published var serviceScheme: String?
+     @Published var accepting: Bool
 
-struct LocalService: Identifiable {
+     init(id: String, serviceName: String, serviceScheme: String?, accepting: Bool) {
+         self.id = id
+         self.serviceName = serviceName
+         self.serviceScheme = serviceScheme
+         self.accepting = accepting
+     }
+
+     func hash(into hasher: inout Hasher) {
+         hasher.combine(id)
+         hasher.combine(serviceName)
+         hasher.combine(serviceScheme)
+         hasher.combine(accepting)
+     }
+
+     static func == (lhs: Invite, rhs: Invite) -> Bool {
+         return lhs.id == rhs.id &&
+                lhs.serviceName == rhs.serviceName &&
+                lhs.serviceScheme == rhs.serviceScheme &&
+                lhs.accepting == rhs.accepting
+     }
+ }
+
+class LocalService: Identifiable, Hashable, Equatable, ObservableObject {
     let name: String
-    let address: String
-    let port: UInt16
-    let scheme: String?
-    let sharedWith: [Invitee]
-    let available: Bool
+    @Published var address: String
+    @Published var port: UInt16
+    @Published var scheme: String?
+    @Published var sharedWith: [Invitee]
+    @Published var available: Bool
     
     var id: String { name }
-}
 
-struct Service: Identifiable {
-    let sourceName: String
-    let address: String
-    let port: UInt16
-    let scheme: String?
-    let available: Bool
+    init(name: String, address: String, port: UInt16, scheme: String?, sharedWith: [Invitee], available: Bool) {
+        self.name = name
+        self.address = address
+        self.port = port
+        self.scheme = scheme
+        self.sharedWith = sharedWith
+        self.available = available
+    }
     
-    var id: String { address+String(port) }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(address)
+        hasher.combine(port)
+        hasher.combine(scheme)
+        hasher.combine(sharedWith)
+        hasher.combine(available)
+    }
+    
+    static func == (lhs: LocalService, rhs: LocalService) -> Bool {
+        return lhs.name == rhs.name &&
+               lhs.address == rhs.address &&
+               lhs.port == rhs.port &&
+               lhs.scheme == rhs.scheme &&
+               lhs.sharedWith == rhs.sharedWith &&
+               lhs.available == rhs.available
+    }
 }
 
-struct ServiceGroup: Identifiable {
-    let name: String?
+class Service: Identifiable, Hashable, Equatable, ObservableObject {
+    @Published var sourceName: String
+    @Published var address: String?
+    @Published var port: UInt16?
+    @Published var scheme: String?
+    @Published var available: Bool
+    @Published var enabled: Bool
+    let id: String
+
+    init(sourceName: String, address: String? = nil, port: UInt16? = nil, scheme: String? = nil, available: Bool = false, enabled: Bool = false, id: String) {
+        self.sourceName = sourceName
+        self.address = address
+        self.port = port
+        self.scheme = scheme
+        self.available = available
+        self.enabled = enabled
+        self.id = id
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(sourceName)
+        hasher.combine(address)
+        hasher.combine(port)
+        hasher.combine(scheme)
+        hasher.combine(available)
+        hasher.combine(enabled)
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: Service, rhs: Service) -> Bool {
+        return lhs.sourceName == rhs.sourceName &&
+               lhs.address == rhs.address &&
+               lhs.port == rhs.port &&
+               lhs.scheme == rhs.scheme &&
+               lhs.available == rhs.available &&
+               lhs.enabled == rhs.enabled &&
+               lhs.id == rhs.id
+    }
+}
+
+class ServiceGroup: Identifiable, Hashable, Equatable, ObservableObject {
+    @Published var name: String?
     let email: String
-    let imageUrl: String?
-    let invites: [Invite]
-    let incomingServices: [Service]
+    @Published var imageUrl: String?
+    @Published var invites: [Invite]
+    @Published var incomingServices: [Service]
     
     var id: String { email }
+
+    init(name: String? = nil, email: String, imageUrl: String? = nil, invites: [Invite] = [], incomingServices: [Service] = []) {
+        self.name = name
+        self.email = email
+        self.imageUrl = imageUrl
+        self.invites = invites
+        self.incomingServices = incomingServices
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(email)
+        hasher.combine(imageUrl)
+        hasher.combine(invites)
+        hasher.combine(incomingServices)
+    }
+    
+    static func == (lhs: ServiceGroup, rhs: ServiceGroup) -> Bool {
+        return lhs.name == rhs.name &&
+               lhs.email == rhs.email &&
+               lhs.imageUrl == rhs.imageUrl &&
+               lhs.invites == rhs.invites &&
+               lhs.incomingServices == rhs.incomingServices
+    }
 }
 
 enum OrchestratorStatus: Int {
@@ -54,15 +172,42 @@ enum OrchestratorStatus: Int {
     case RetrievingProject
 }
 
-struct ApplicationState {
-    let enrolled: Bool
-    let orchestrator_status: OrchestratorStatus
-    let enrollmentName: String?
-    let enrollmentEmail: String?
-    let enrollmentImage: String?
-    let enrollmentGithubUser: String?
-    let localServices: [LocalService]
-    let groups: [ServiceGroup]
+class ApplicationState: ObservableObject {
+    @Published var enrolled: Bool
+    @Published var orchestrator_status: OrchestratorStatus
+    @Published var enrollmentName: String?
+    @Published var enrollmentEmail: String?
+    @Published var enrollmentImage: String?
+    @Published var enrollmentGithubUser: String?
+    @Published var localServices: [LocalService]
+    @Published var groups: [ServiceGroup]
+
+    init(enrolled: Bool,
+         orchestrator_status: OrchestratorStatus,
+         enrollmentName: String?,
+         enrollmentEmail: String?,
+         enrollmentImage: String?,
+         enrollmentGithubUser: String?,
+         localServices: [LocalService],
+         groups: [ServiceGroup]) {
+        self.enrolled = enrolled
+        self.orchestrator_status = orchestrator_status
+        self.enrollmentName = enrollmentName
+        self.enrollmentEmail = enrollmentEmail
+        self.enrollmentImage = enrollmentImage
+        self.enrollmentGithubUser = enrollmentGithubUser
+        self.localServices = localServices
+        self.groups = groups
+    }
+    
+    func getLocalService(_ localServiceId: String) -> LocalService? {
+        for service in self.localServices {
+            if service.id == localServiceId {
+                return service
+            }
+        }
+        return nil
+    }
 }
 
 enum NotificationKind: Int {
@@ -85,7 +230,6 @@ func swift_application_snapshot() -> ApplicationState {
     return convertApplicationState(cState: application_state_snapshot())
 }
 
-
 func swift_initialize_application() {
     let applicationStateClosure: @convention(c) (C_ApplicationState) -> Void = { state in
         StateContainer.shared.update( state: convertApplicationState(cState: state ) )
@@ -101,8 +245,7 @@ func swift_initialize_application() {
                content.title = notification.title
                content.body = notification.message
 
-               let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
-               let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+               let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
                
                UNUserNotificationCenter.current().add(request)
            } else {
@@ -191,7 +334,6 @@ func convertLocalService(cLocalService: UnsafePointer<C_LocalService>) -> LocalS
     )
 }
 
-
 func convertInvitee(cInvitee: UnsafePointer<C_Invitee>) -> Invitee {
     let cRecord = cInvitee.pointee
 
@@ -237,23 +379,28 @@ func convertInvite(cInvite: UnsafePointer<C_Invite>) -> Invite {
     let id = String(cString: cRecord.id)
     let serviceName = String(cString: cRecord.service_name)
     let serviceScheme = optional_string(str: cRecord.service_scheme)
+    let accepting = cRecord.accepting != 0
 
-    return Invite(id: id, serviceName: serviceName, serviceScheme: serviceScheme)
+    return Invite(id: id, serviceName: serviceName, serviceScheme: serviceScheme, accepting: accepting)
 }
 
 func convertService(cService: UnsafePointer<C_Service>) -> Service {
     let cRecord = cService.pointee
 
     let sourceName = String(cString: cRecord.source_name)
-    let address = String(cString: cRecord.address)
+    let address = optional_string(str: cRecord.address)
     let scheme = optional_string(str: cRecord.scheme)
+    let id = String(cString: cRecord.id)
+    let port = cRecord.port == 0 ? nil : Optional(cRecord.port)
 
     return Service(
         sourceName: sourceName,
         address: address,
-        port: cRecord.port,
+        port: port,
         scheme: scheme,
-        available: cRecord.available != 0
+        available: cRecord.available != 0,
+        enabled: cRecord.enabled != 0,
+        id: id
     )
     
 }

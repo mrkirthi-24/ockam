@@ -50,9 +50,11 @@ typedef struct C_Invite {
    * Optional
    */
   const char *service_scheme;
+  uint8_t accepting;
 } C_Invite;
 
 typedef struct C_Service {
+  const char *id;
   const char *source_name;
   const char *address;
   uint16_t port;
@@ -61,6 +63,7 @@ typedef struct C_Service {
    */
   const char *scheme;
   uint8_t available;
+  uint8_t enabled;
 } C_Service;
 
 typedef struct C_ServiceGroup {
@@ -113,9 +116,44 @@ void initialize_application(void (*application_state_callback)(struct C_Applicat
                             void (*notification_callback)(struct C_Notification notification));
 
 /**
+ * Accept the invitation with the provided id.
+ */
+void accept_invitation(const char *id);
+
+/**
  * Initiate and wait for graceful shutdown of the application.
  */
 void shutdown_application(void);
+
+/**
+ * Share a local service with the provided emails.
+ */
+const char *share_local_service(const char *name, const char *emails);
+
+/**
+ * Enable an accepted service associated with the invite id.
+ */
+void enable_accepted_service(const char *invitation_id);
+
+/**
+ * Disable an accepted service associated with the invite id.
+ */
+void disable_accepted_service(const char *invitation_id);
+
+/**
+ * Removes a local service with the provided name.
+ */
+void delete_local_service(const char *name);
+
+/**
+ * Creates a local service with the provided name and address.
+ */
+const char *create_local_service(const char *name, const char *address, const char *emails);
+
+/**
+ * Resets the application state to a fresh installation.
+ */
+void reset_application_state(void);
 
 /**
  * Starts user enrollment

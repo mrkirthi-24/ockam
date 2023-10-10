@@ -10,11 +10,11 @@ const DEFAULT_HOST: &str = "localhost";
 
 impl AppState {
     /// Create a TCP outlet within the default node.
-    async fn tcp_outlet_create(
+    pub async fn tcp_outlet_create(
         &self,
         service: String,
         address: String,
-        email: Option<String>,
+        emails: Vec<String>,
     ) -> crate::Result<()> {
         debug!(%service, %address, "Creating an outlet");
         let addr = if let Some((host, port)) = address.split_once(':') {
@@ -28,7 +28,13 @@ impl AppState {
         let worker_addr = extract_address_value(&service).wrap_err("Invalid service address")?;
         let node_manager = self.node_manager().await;
         match node_manager
-            .create_outlet(&self.context(), socket_addr, worker_addr.into(), None, true)
+            .create_outlet(
+                &self.context(),
+                socket_addr,
+                worker_addr.clone().into(),
+                Some(worker_addr),
+                true,
+            )
             .await
         {
             Ok(status) => {
@@ -40,8 +46,8 @@ impl AppState {
             Err(_) => Err(Error::App("Failed to create outlet".to_string())),
         }?;
 
-        if let Some(email) = email {
-            self.create_service_invitation(email, socket_addr.to_string())
+        for email in emails {
+            self.create_service_invitation_by_socket_addr(email, socket_addr.to_string())
                 .await?;
         }
         Ok(())

@@ -7,7 +7,7 @@ use ockam_api::cli_state;
 use ockam_api::cli_state::traits::StateDirTrait;
 use ockam_api::cli_state::{add_project_info_to_node_state, update_enrolled_identity, SpaceConfig};
 use ockam_api::cloud::project::{Project, Projects};
-use ockam_api::cloud::space::{CreateSpace, Space, Spaces};
+use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
 
@@ -22,9 +22,19 @@ impl AppState {
     ///  - connects to the OIDC service to authenticate the user of the Ockam application to retrieve a token
     ///  - connects to the Orchestrator with the retrieved token to create a project
     pub async fn enroll_user(&self) -> Result<()> {
-        self.enroll_with_token()
-            .await
-            .unwrap_or_else(|e| error!(?e, "Failed to enroll user"));
+        let result = self.enroll_with_token().await;
+
+        if let Err(err) = result {
+            error!(?err, "Failed to enroll user");
+            self.update_orchestrator_status(OrchestratorStatus::Disconnected);
+            self.publish_state().await;
+            self.notify(Notification {
+                kind: Kind::Error,
+                title: "Failed to enroll user".to_string(),
+                message: format!("{}", err),
+            });
+            return Err(err);
+        }
         // Reset the node manager to include the project's setup, needed to create the relay.
         // This is necessary because the project data is used in the worker initialization,
         // which can't be rerun manually once the worker is started.
@@ -48,12 +58,6 @@ impl AppState {
             return Ok(());
         }
 
-        self.notify(Notification {
-            kind: Kind::Information,
-            title: "Enrolling...".to_string(),
-            message: "Please wait".to_string(),
-        });
-
         self.update_orchestrator_status(OrchestratorStatus::WaitingForToken);
         self.publish_state().await;
 
@@ -68,6 +72,18 @@ impl AppState {
         cli_state
             .users_info
             .overwrite(&user_info.email, user_info.clone())?;
+
+        if !user_info.email_verified {
+            self.notify(Notification {
+                kind: Kind::Information,
+                title: "Email Verification Required".to_string(),
+                message: "For security reasons, we need to confirm your email address.\
+                     A verification email has been sent to you. \
+                     Please review your inbox and follow the provided steps \
+                     to complete the verification process"
+                    .to_string(),
+            })
+        }
 
         // enroll the current user using that token on the controller
         {

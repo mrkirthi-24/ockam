@@ -38,7 +38,7 @@ pub struct ReceivedInvitations {
     pub(crate) status: Vec<(String, ReceivedInvitationStatus)>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub enum ReceivedInvitationStatus {
     Accepting,
     Accepted,

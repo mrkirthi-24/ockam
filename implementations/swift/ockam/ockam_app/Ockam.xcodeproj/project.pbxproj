@@ -9,28 +9,35 @@
 /* Begin PBXBuildFile section */
 		7807276C2ACF5AB500C93A44 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7807276B2ACF5AB500C93A44 /* CoreFoundation.framework */; };
 		7807276F2ACF5B3400C93A44 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7807276D2ACF5AD700C93A44 /* SystemConfiguration.framework */; };
+		781D00042AD05D26009848FE /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 781D00032AD05D26009848FE /* Components.swift */; };
 		782D5B492AC1D3D700D1B27F /* OckamApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 782D5B482AC1D3D700D1B27F /* OckamApp.swift */; };
 		782D5B4B2AC1D3D700D1B27F /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 782D5B4A2AC1D3D700D1B27F /* MainView.swift */; };
 		782D5B4D2AC1D3D800D1B27F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 782D5B4C2AC1D3D800D1B27F /* Assets.xcassets */; };
-		782D5B502AC1D3D800D1B27F /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 782D5B4F2AC1D3D800D1B27F /* Preview Assets.xcassets */; };
 		782D5BAC2AC33EAD00D1B27F /* Bridge.h in Headers */ = {isa = PBXBuildFile; fileRef = 782D5BAB2AC33EAD00D1B27F /* Bridge.h */; };
 		782D5BAF2AC33F9400D1B27F /* libockam_app_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 782D5B792AC1E36700D1B27F /* libockam_app_lib.a */; };
 		783B62722AC432B700880261 /* Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 783B62712AC432B700880261 /* Bridge.swift */; };
+		78ED0DA12AD4354400574AE9 /* CreateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED0DA02AD4354400574AE9 /* CreateService.swift */; };
+		78ED0DA32AD4501200574AE9 /* ShareService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED0DA22AD4501200574AE9 /* ShareService.swift */; };
+		78F5F3042AD4127C00B8D18E /* EmailInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78F5F3032AD4127C00B8D18E /* EmailInput.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		7807276B2ACF5AB500C93A44 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		7807276D2ACF5AD700C93A44 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
+		781D00032AD05D26009848FE /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		782D5B452AC1D3D700D1B27F /* Ockam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ockam.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		782D5B482AC1D3D700D1B27F /* OckamApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OckamApp.swift; sourceTree = "<group>"; };
 		782D5B4A2AC1D3D700D1B27F /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
 		782D5B4C2AC1D3D800D1B27F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		782D5B4F2AC1D3D800D1B27F /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		782D5B512AC1D3D800D1B27F /* Ockam.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Ockam.entitlements; sourceTree = "<group>"; };
 		782D5B792AC1E36700D1B27F /* libockam_app_lib.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libockam_app_lib.a; path = ../../../../target/debug/libockam_app_lib.a; sourceTree = "<group>"; };
 		782D5BAB2AC33EAD00D1B27F /* Bridge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Bridge.h; path = Ockam/Bridge.h; sourceTree = "<group>"; };
 		782D5BAD2AC33F7B00D1B27F /* libockam_app_lib.d */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.dtrace; name = libockam_app_lib.d; path = ../../../../target/debug/libockam_app_lib.d; sourceTree = "<group>"; };
 		783B62712AC432B700880261 /* Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bridge.swift; sourceTree = "<group>"; };
+		785D8D372AD5369100DF5004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		78ED0DA02AD4354400574AE9 /* CreateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateService.swift; sourceTree = "<group>"; };
+		78ED0DA22AD4501200574AE9 /* ShareService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareService.swift; sourceTree = "<group>"; };
+		78F5F3032AD4127C00B8D18E /* EmailInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailInput.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,22 +75,18 @@
 		782D5B472AC1D3D700D1B27F /* Ockam */ = {
 			isa = PBXGroup;
 			children = (
+				785D8D372AD5369100DF5004 /* Info.plist */,
 				782D5B482AC1D3D700D1B27F /* OckamApp.swift */,
 				782D5B4A2AC1D3D700D1B27F /* MainView.swift */,
 				782D5B4C2AC1D3D800D1B27F /* Assets.xcassets */,
 				782D5B512AC1D3D800D1B27F /* Ockam.entitlements */,
-				782D5B4E2AC1D3D800D1B27F /* Preview Content */,
 				783B62712AC432B700880261 /* Bridge.swift */,
+				781D00032AD05D26009848FE /* Components.swift */,
+				78F5F3032AD4127C00B8D18E /* EmailInput.swift */,
+				78ED0DA02AD4354400574AE9 /* CreateService.swift */,
+				78ED0DA22AD4501200574AE9 /* ShareService.swift */,
 			);
 			path = Ockam;
-			sourceTree = "<group>";
-		};
-		782D5B4E2AC1D3D800D1B27F /* Preview Content */ = {
-			isa = PBXGroup;
-			children = (
-				782D5B4F2AC1D3D800D1B27F /* Preview Assets.xcassets */,
-			);
-			path = "Preview Content";
 			sourceTree = "<group>";
 		};
 		782D5B762AC1E27900D1B27F /* Frameworks */ = {
@@ -137,7 +140,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1430;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					782D5B442AC1D3D700D1B27F = {
 						CreatedOnToolsVersion = 14.3.1;
@@ -167,7 +170,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				782D5B502AC1D3D800D1B27F /* Preview Assets.xcassets in Resources */,
 				782D5B4D2AC1D3D800D1B27F /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -180,7 +182,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				782D5B4B2AC1D3D700D1B27F /* MainView.swift in Sources */,
+				78ED0DA12AD4354400574AE9 /* CreateService.swift in Sources */,
+				78F5F3042AD4127C00B8D18E /* EmailInput.swift in Sources */,
+				781D00042AD05D26009848FE /* Components.swift in Sources */,
 				782D5B492AC1D3D700D1B27F /* OckamApp.swift in Sources */,
+				78ED0DA32AD4501200574AE9 /* ShareService.swift in Sources */,
 				783B62722AC432B700880261 /* Bridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -221,9 +227,11 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -286,9 +294,11 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -317,20 +327,25 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Ockam/Ockam.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"Ockam/Preview Content\"";
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Ockam/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Ockam;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.Ockam;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -344,20 +359,25 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Ockam/Ockam.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"Ockam/Preview Content\"";
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Ockam/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Ockam;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MARKETING_VERSION = 0.1;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = io.ockam.Ockam;

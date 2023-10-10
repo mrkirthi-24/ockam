@@ -4,7 +4,7 @@ use tracing::{debug, info};
 
 impl AppState {
     /// Delete a TCP outlet from the default node.
-    async fn tcp_outlet_delete(&self, alias: String) -> crate::Result<()> {
+    pub async fn tcp_outlet_delete(&self, alias: String) -> crate::Result<()> {
         debug!(%alias, "Deleting a TCP outlet");
         let node_manager = self.node_manager().await;
         match node_manager.delete_outlet(&alias).await {

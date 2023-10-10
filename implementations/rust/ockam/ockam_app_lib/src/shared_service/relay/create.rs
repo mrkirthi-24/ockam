@@ -4,8 +4,8 @@ use crate::Result;
 use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cli_state::{CliState, StateDirTrait};
-use ockam_api::nodes::models::relay::{CreateRelay, RelayInfo};
-use ockam_api::nodes::{InMemoryNode, NodeManagerWorker};
+use ockam_api::nodes::models::relay::RelayInfo;
+use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
 use once_cell::sync::Lazy;
 use std::str::FromStr;
@@ -24,7 +24,6 @@ impl AppState {
     ) {
         self.update_orchestrator_status(OrchestratorStatus::Connecting);
         self.publish_state().await;
-
         loop {
             match self
                 .create_relay_impl(&context, &cli_state, node_manager.clone())

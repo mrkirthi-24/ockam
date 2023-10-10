@@ -1,9 +1,10 @@
 use crate::cli::cli_bin;
-use crate::Error;
+use crate::error::Error;
 use crate::Result;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_core::async_trait;
 use std::net::SocketAddr;
+use std::process::Command;
 use tracing::{debug, error, info, trace, warn};
 
 // Matches backend default of 14 days
@@ -55,6 +56,18 @@ impl Cli {
     }
 }
 
+fn log_command(cmd: &mut Command) -> std::io::Result<()> {
+    info!(
+        "Executing command: {} {}",
+        cmd.get_program().to_string_lossy(),
+        cmd.get_args()
+            .map(|arg| arg.to_string_lossy())
+            .fold(String::new(), |acc, arg| acc + " " + &arg)
+    );
+
+    Ok(())
+}
+
 impl BackgroundNodeClient for Cli {
     fn nodes(&self) -> Box<dyn Nodes> {
         Box::new(self.clone())
@@ -81,6 +94,7 @@ impl Nodes for Cli {
             "--trust-context",
             node_name
         )
+        .before_spawn(log_command)
         .stderr_null()
         .stdout_capture()
         .run()?;
@@ -98,6 +112,7 @@ impl Nodes for Cli {
             "--yes",
             node_name
         )
+        .before_spawn(log_command)
         .stderr_null()
         .stdout_capture()
         .run();
@@ -131,6 +146,7 @@ impl Inlets for Cli {
             "--retry-wait",
             "0",
         )
+        .before_spawn(log_command)
         .stderr_null()
         .stdout_capture()
         .run()?;
@@ -155,6 +171,7 @@ impl Inlets for Cli {
             "--output",
             "json"
         )
+        .before_spawn(log_command)
         .env("OCKAM_LOG", "off")
         .stderr_null()
         .stdout_capture()
@@ -189,6 +206,7 @@ impl Inlets for Cli {
             node_name,
             "--yes"
         )
+        .before_spawn(log_command)
         .stderr_null()
         .stdout_capture()
         .run()
@@ -213,6 +231,7 @@ impl Projects for Cli {
             node_name,
             hex_encoded_ticket,
         )
+        .before_spawn(log_command)
         .stderr_null()
         .stdout_capture()
         .run();
@@ -233,6 +252,7 @@ impl Projects for Cli {
             "--to",
             &format!("/project/{project_name}")
         )
+        .before_spawn(log_command)
         .read()
         .map_err(|err| {
             error!(?err, "Could not create enrollment ticket");

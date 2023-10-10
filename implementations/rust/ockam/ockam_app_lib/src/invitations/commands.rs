@@ -8,10 +8,8 @@ use tracing::{debug, info, trace, warn};
 use ockam_api::address::get_free_address;
 use ockam_api::cli_state::{CliState, StateDirTrait};
 use ockam_api::cloud::project::Project;
-use ockam_api::cloud::share::{
-    AcceptInvitation, CreateServiceInvitation, InvitationWithAccess, Invitations,
-};
-use ockam_api::cloud::share::{InvitationListKind, ListInvitations};
+use ockam_api::cloud::share::InvitationListKind;
+use ockam_api::cloud::share::{CreateServiceInvitation, InvitationWithAccess, Invitations};
 
 use crate::background_node::BackgroundNodeClient;
 use crate::invitations::state::{Inlet, ReceivedInvitationStatus};
@@ -37,14 +35,16 @@ impl AppState {
         // Otherwise, return early.
         {
             let invitations = self.invitations();
+            debug!("locking...");
             let mut writer = invitations.write().await;
+            debug!("locked!");
             match writer.received.status.iter_mut().find(|x| x.0 == id) {
                 None => {
                     writer
                         .received
                         .status
                         .push((id.clone(), ReceivedInvitationStatus::Accepting));
-                    self.publish_state().await;
+                    debug!(?id, "Invitation is being processed");
                 }
                 Some((i, s)) => {
                     return match s {
@@ -60,6 +60,8 @@ impl AppState {
                 }
             }
         }
+        debug!("unlocked!");
+        self.publish_state().await;
 
         let controller = self.controller().await?;
         let res = controller
@@ -72,7 +74,29 @@ impl AppState {
         Ok(())
     }
 
-    pub async fn create_service_invitation(
+    pub async fn create_service_invitation_by_alias(
+        &self,
+        recipient_email: String,
+        alias: &str,
+    ) -> Result<(), String> {
+        let node_manager = self.node_manager().await;
+        let outlets = node_manager.list_outlets().await;
+
+        let outlet_socket_addr = outlets
+            .list
+            .iter()
+            .find(|o| o.alias == alias)
+            .map(|o| o.socket_addr.to_string());
+
+        if let Some(outlet_socket_addr) = outlet_socket_addr {
+            self.create_service_invitation_by_socket_addr(recipient_email, outlet_socket_addr)
+                .await
+        } else {
+            Err(format!("Cannot find service '{}'", alias))
+        }
+    }
+
+    pub async fn create_service_invitation_by_socket_addr(
         &self,
         recipient_email: String,
         outlet_socket_addr: String,
@@ -82,13 +106,17 @@ impl AppState {
             ?outlet_socket_addr,
             "creating service invitation"
         );
-        let projects = self.projects();
-        let projects_guard = projects.read().await;
-        let project_id = projects_guard
-            .iter()
-            .find(|p| p.name == *PROJECT_NAME)
-            .map(|p| p.id.to_owned())
-            .ok_or_else(|| "could not find default project".to_string())?;
+
+        let project_id = {
+            let projects = self.projects();
+            let projects_guard = projects.read().await;
+            projects_guard
+                .iter()
+                .find(|p| p.name == *PROJECT_NAME)
+                .map(|p| p.id.to_owned())
+                .ok_or_else(|| "could not find default project".to_string())
+        }?;
+
         let enrollment_ticket = self
             .create_enrollment_ticket(project_id)
             .await
@@ -97,6 +125,7 @@ impl AppState {
         let socket_addr = SocketAddr::from_str(outlet_socket_addr.as_str())
             .into_diagnostic()
             .map_err(|e| format!("Cannot parse the outlet address as a socket address: {e}"))?;
+
         let invite_args = self
             .build_args_for_create_service_invitation(
                 &socket_addr,
@@ -177,8 +206,8 @@ impl AppState {
 
         let mut running_inlets = vec![];
         let invitations = self.invitations();
-        let invitation_guard = invitations.read().await;
         {
+            let invitation_guard = invitations.read().await;
             if invitation_guard.accepted.invitations.is_empty() {
                 debug!("No accepted invitations, skipping inlets refresh");
                 return Ok(());
@@ -296,14 +325,23 @@ impl AppState {
 
     pub(crate) async fn disconnect_tcp_inlet(&self, invitation_id: &str) -> crate::Result<()> {
         let background_node_client = self.background_node_client().await;
-        let invitations = self.invitations();
-        let mut writer = invitations.write().await;
-        if let Some(inlet) = writer.accepted.inlets.get_mut(invitation_id) {
-            if !inlet.enabled {
-                debug!(node = %inlet.node_name, alias = %inlet.alias, "TCP inlet was already disconnected");
-                return Ok(());
+
+        let inlet = {
+            let invitations = self.invitations();
+            let mut writer = invitations.write().await;
+            let mut inlet = writer.accepted.inlets.get_mut(invitation_id);
+
+            if let Some(inlet) = inlet.as_mut() {
+                if !inlet.enabled {
+                    debug!(node = %inlet.node_name, alias = %inlet.alias, "TCP inlet was already disconnected");
+                    return Ok(());
+                }
+                inlet.disable();
             }
-            inlet.disable();
+            inlet.cloned()
+        };
+
+        if let Some(inlet) = inlet {
             background_node_client
                 .inlets()
                 .delete(&inlet.node_name, &inlet.alias)
@@ -314,16 +352,24 @@ impl AppState {
     }
 
     pub(crate) async fn enable_tcp_inlet(&self, invitation_id: &str) -> crate::Result<()> {
-        let invitations = self.invitations();
-        let mut writer = invitations.write().await;
-        if let Some(inlet) = writer.accepted.inlets.get_mut(invitation_id) {
-            if inlet.enabled {
-                debug!(node = %inlet.node_name, alias = %inlet.alias, "TCP inlet was already enabled");
-                return Ok(());
+        let changed = {
+            let invitations = self.invitations();
+            let mut writer = invitations.write().await;
+            if let Some(inlet) = writer.accepted.inlets.get_mut(invitation_id) {
+                if inlet.enabled {
+                    debug!(node = %inlet.node_name, alias = %inlet.alias, "TCP inlet was already enabled");
+                    return Ok(());
+                }
+                inlet.enable();
+                info!(node = %inlet.node_name, alias = %inlet.alias, "Enabled TCP inlet");
+                true
+            } else {
+                false
             }
-            inlet.enable();
+        };
+
+        if changed {
             self.publish_state().await;
-            info!(node = %inlet.node_name, alias = %inlet.alias, "Enabled TCP inlet");
         }
         Ok(())
     }

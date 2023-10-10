@@ -1,6 +1,6 @@
 extern crate cbindgen;
 
-use cbindgen::{Bindings, Config, Error};
+use cbindgen::{Config, Error};
 use std::env;
 
 fn main() {
