@@ -74,24 +74,27 @@ impl AbacAccessControl {
         // Get identity attributes and populate the environment:
         if let Some(attrs) = self.repository.get_attributes(&id).await? {
             for (key, value) in attrs.iter() {
-                if key.find(|c: char| c.is_whitespace()).is_some() {
+                if key.to_string().find(|c: char| c.is_whitespace()).is_some() {
                     log::warn! {
                         policy = %self.expression,
                         id     = %id,
-                        key    = %key,
+                        key    = ?key,
                         "attribute key with whitespace ignored"
                     }
                 }
 
-                if environment.contains(key) {
+                if environment.contains(key.to_string().as_str()) {
                     log::debug! {
                         policy = %self.expression,
                         id     = %id,
-                        key    = %key,
+                        key    = ?key,
                         "attribute already present"
                     }
                 } else {
-                    environment.put(format!("subject.{key}"), attribute_value(value.clone()));
+                    environment.put(
+                        format!("subject.{}", key.to_string()),
+                        attribute_value(value.clone()),
+                    );
                 }
             }
         };

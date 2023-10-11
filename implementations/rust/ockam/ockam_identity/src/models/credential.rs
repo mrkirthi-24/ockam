@@ -1,10 +1,10 @@
 use crate::models::{ChangeHash, Identifier, TimestampInSeconds};
-use crate::AttributeValue;
+use crate::{AttributeName, AttributeValue};
 use core::str::{from_utf8, Utf8Error};
 use minicbor::bytes::ByteVec;
 use minicbor::encode::Write;
 use minicbor::{Decode, Decoder, Encode, Encoder};
-use ockam_core::compat::string::{String, ToString};
+use ockam_core::compat::string::ToString;
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 use ockam_vault::{ECDSASHA256CurveP256Signature, EdDSACurve25519Signature};
 
@@ -67,29 +67,32 @@ pub struct Attributes {
     /// so we use the 2 functions below to do the decoding
     #[cbor(decode_with = "decode_attributes")]
     #[cbor(encode_with = "encode_attributes")]
-    #[n(2)] pub map: BTreeMap<String, AttributeValue>,
+    #[n(2)] pub map: BTreeMap<AttributeName, AttributeValue>,
 }
 
 fn decode_attributes<Ctx>(
     d: &mut Decoder,
     _ctx: &mut Ctx,
-) -> Result<BTreeMap<String, AttributeValue>, minicbor::decode::Error> {
+) -> Result<BTreeMap<AttributeName, AttributeValue>, minicbor::decode::Error> {
     let attributes: BTreeMap<ByteVec, ByteVec> = d.decode()?;
-    let attributes: Result<BTreeMap<String, AttributeValue>, Utf8Error> = attributes
+    let attributes: Result<BTreeMap<AttributeName, AttributeValue>, Utf8Error> = attributes
         .iter()
         .map(|(k, v)| decode_key_value(k, v))
         .collect();
     attributes.map_err(|e| minicbor::decode::Error::message(e.to_string()))
 }
 
-fn decode_key_value(k: &Vec<u8>, v: &Vec<u8>) -> Result<(String, AttributeValue), Utf8Error> {
+fn decode_key_value(
+    k: &Vec<u8>,
+    v: &Vec<u8>,
+) -> Result<(AttributeName, AttributeValue), Utf8Error> {
     let key = from_utf8(k.as_slice())?.into();
     let value = from_utf8(v.as_slice())?.into();
     Ok((key, value))
 }
 
 fn encode_attributes<Ctx, W: Write>(
-    v: &BTreeMap<String, AttributeValue>,
+    v: &BTreeMap<AttributeName, AttributeValue>,
     e: &mut Encoder<W>,
     _ctx: &mut Ctx,
 ) -> Result<(), minicbor::encode::Error<W::Error>> {
@@ -97,7 +100,7 @@ fn encode_attributes<Ctx, W: Write>(
         .iter()
         .map(|(k, v)| {
             (
-                From::from(k.as_bytes().to_vec()),
+                From::from(k.to_string().as_bytes().to_vec()),
                 From::from(v.to_string().as_bytes().to_vec()),
             )
         })

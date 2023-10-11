@@ -360,7 +360,7 @@ fn verify_credential(
             .subject_attributes
             .map
         {
-            attr_map.insert(k, v.to_string());
+            attr_map.insert(k.to_string(), v.to_string());
         }
         Ok((
             *credential_and_purpose_key_data

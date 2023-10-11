@@ -87,7 +87,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .await?
         .unwrap();
 
-    let val = attrs.get("is_superuser").unwrap();
+    let val = attrs.get(&"is_superuser".into()).unwrap();
 
     assert_eq!(val, &"true".into());
 
@@ -183,14 +183,14 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .await?
         .unwrap();
 
-    assert_eq!(attrs1.get("is_admin").unwrap(), &"true".into());
+    assert_eq!(attrs1.get(&"is_admin".into()).unwrap(), &"true".into());
 
     let attrs2 = identities_repository
         .get_attributes(client2.identifier())
         .await?
         .unwrap();
 
-    assert_eq!(attrs2.get("is_user").unwrap(), &"true".into());
+    assert_eq!(attrs2.get(&"is_user".into()).unwrap(), &"true".into());
 
     ctx.stop().await
 }
@@ -263,7 +263,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         msgs_count: counter.clone(),
     };
 
-    let required_attributes = vec![("is_superuser".to_string(), "true".into())];
+    let required_attributes = vec![("is_superuser".into(), "true".into())];
     let access_control =
         CredentialAccessControl::new(&required_attributes, identities_repository.clone());
 

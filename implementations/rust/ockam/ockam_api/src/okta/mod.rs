@@ -89,9 +89,9 @@ impl Server {
                         let entry = AttributesEntry::new(
                             attrs
                                 .into_iter()
-                                .map(|(k, v)| (k, v.into()))
+                                .map(|(k, v)| (k.into(), v.into()))
                                 .chain(
-                                    [(TRUST_CONTEXT_ID.to_string(), self.project.as_str().into())]
+                                    [(TRUST_CONTEXT_ID.into(), self.project.as_str().into())]
                                         .into_iter(),
                                 )
                                 .collect(),

@@ -1,10 +1,8 @@
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::compat::string::String;
-use ockam_core::compat::string::ToString;
 use ockam_core::Result;
 
 use crate::models::{Attributes, CredentialSchemaIdentifier, TimestampInSeconds};
-use crate::{AttributeValue, IdentityError};
+use crate::{AttributeName, AttributeValue, IdentityError};
 
 /// Create a new timestamp using the system time
 #[cfg(feature = "std")]
@@ -30,7 +28,7 @@ pub fn add_seconds(timestamp: &TimestampInSeconds, seconds: u64) -> TimestampInS
 /// Convenient builder for the [`Attributes`] struct
 pub struct AttributesBuilder {
     schema_id: CredentialSchemaIdentifier,
-    map: BTreeMap<String, AttributeValue>,
+    map: BTreeMap<AttributeName, AttributeValue>,
 }
 
 impl AttributesBuilder {
@@ -44,7 +42,7 @@ impl AttributesBuilder {
 
     /// Add an attributes to the [`Attributes`]
     pub fn with_attribute(mut self, key: &str, value: &str) -> Self {
-        self.map.insert(key.to_string(), value.into());
+        self.map.insert(key.into(), value.into());
         self
     }
 

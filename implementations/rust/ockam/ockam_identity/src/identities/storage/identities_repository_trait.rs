@@ -6,7 +6,7 @@ use ockam_core::Result;
 use ockam_core::{async_trait, Error};
 
 use crate::models::{ChangeHistory, Identifier};
-use crate::{AttributeValue, AttributesEntry};
+use crate::{AttributeName, AttributeValue, AttributesEntry};
 
 /// Repository for data related to identities: key changes and attributes
 #[async_trait]
@@ -47,7 +47,7 @@ pub trait IdentityAttributesWriter: Send + Sync + 'static {
     async fn put_attribute_value(
         &self,
         subject: &Identifier,
-        attribute_name: &str,
+        attribute_name: AttributeName,
         attribute_value: AttributeValue,
     ) -> Result<()>;
 

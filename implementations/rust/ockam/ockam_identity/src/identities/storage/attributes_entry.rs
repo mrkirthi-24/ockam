@@ -1,11 +1,11 @@
 use crate::models::{Identifier, TimestampInSeconds};
 use crate::utils::now;
+use crate::AttributeName;
 use crate::AttributeValue;
 use alloc::collections::btree_map::Iter;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::ToOwned;
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::compat::string::{String, ToString};
 use ockam_core::Result;
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[cbor(map)]
 pub struct AttributesEntry {
     // TODO: Check how it looks serialized with both serde and minicbor
-    #[n(1)] attrs: BTreeMap<String, AttributeValue>,
+    #[n(1)] attrs: BTreeMap<AttributeName, AttributeValue>,
     #[n(2)] added: TimestampInSeconds,
     #[n(3)] expires: Option<TimestampInSeconds>,
     #[n(4)] attested_by: Option<Identifier>,
@@ -28,7 +28,7 @@ impl AttributesEntry {
 
     /// Constructor
     pub fn new(
-        attrs: BTreeMap<String, AttributeValue>,
+        attrs: BTreeMap<AttributeName, AttributeValue>,
         added: TimestampInSeconds,
         expires: Option<TimestampInSeconds>,
         attested_by: Option<Identifier>,
@@ -67,17 +67,17 @@ impl AttributesEntry {
     }
 
     /// Get an attribute value by name
-    pub fn get(&self, name: &str) -> Option<&AttributeValue> {
+    pub fn get(&self, name: &AttributeName) -> Option<&AttributeValue> {
         self.attrs.get(name)
     }
 
     /// Get an attribute value by name
-    pub fn insert(&mut self, name: &str, value: AttributeValue) -> Option<AttributeValue> {
-        self.attrs.insert(name.to_string(), value)
+    pub fn insert(&mut self, name: AttributeName, value: AttributeValue) -> Option<AttributeValue> {
+        self.attrs.insert(name, value)
     }
 
     /// The entry attributes
-    pub fn iter(&self) -> Iter<String, AttributeValue> {
+    pub fn iter(&self) -> Iter<AttributeName, AttributeValue> {
         self.attrs.iter()
     }
 

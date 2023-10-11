@@ -64,10 +64,9 @@ impl Worker for EnrollmentTokenAcceptor {
                             let attrs = tkn
                                 .attrs
                                 .iter()
-                                .map(|(k, v)| (k.clone(), v.clone().into()))
+                                .map(|(k, v)| (k.clone().into(), v.clone().into()))
                                 .chain(
-                                    [(TRUST_CONTEXT_ID.to_string(), trust_context.into())]
-                                        .into_iter(),
+                                    [(TRUST_CONTEXT_ID.into(), trust_context.into())].into_iter(),
                                 )
                                 .collect();
                             let entry =

@@ -10,8 +10,8 @@ use crate::models::{ChangeHistory, Identifier};
 use crate::storage::{InMemoryStorage, Storage};
 use crate::utils::now;
 use crate::{
-    AttributeValue, AttributesEntry, IdentitiesReader, IdentitiesRepository, IdentitiesWriter,
-    IdentityAttributesReader, IdentityAttributesWriter,
+    AttributeName, AttributeValue, AttributesEntry, IdentitiesReader, IdentitiesRepository,
+    IdentitiesWriter, IdentityAttributesReader, IdentityAttributesWriter,
 };
 
 /// Implementation of `IdentityAttributes` trait based on an underlying `Storage`
@@ -111,7 +111,7 @@ impl IdentityAttributesWriter for IdentitiesStorage {
     async fn put_attribute_value(
         &self,
         subject: &Identifier,
-        attribute_name: &str,
+        attribute_name: AttributeName,
         attribute_value: AttributeValue,
     ) -> Result<()> {
         let mut attributes = match self.get_attributes(subject).await? {

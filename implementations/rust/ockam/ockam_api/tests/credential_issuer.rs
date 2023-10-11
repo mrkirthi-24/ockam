@@ -29,7 +29,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let pre_trusted = HashMap::from([(
         member_identity.identifier().clone(),
         AttributesEntry::new(
-            BTreeMap::from([("attr".to_string(), "value".into())]),
+            BTreeMap::from([("attr".into(), "value".into())]),
             now,
             None,
             None,
@@ -110,11 +110,14 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         data.credential_data
             .subject_attributes
             .map
-            .get("trust_context_id")
+            .get(&"trust_context_id".into())
     );
     assert_eq!(
         Some(&"value".into()),
-        data.credential_data.subject_attributes.map.get("attr")
+        data.credential_data
+            .subject_attributes
+            .map
+            .get(&"attr".into())
     );
     ctx.stop().await
 }

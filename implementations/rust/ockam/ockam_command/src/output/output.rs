@@ -545,7 +545,7 @@ impl fmt::Display for CredentialDisplay {
                     .subject_attributes
                     .map
                     .iter()
-                    .map(|(k, v)| (k, v.to_string())),
+                    .map(|(k, v)| (k.to_string(), v.to_string())),
             )
             .finish()?;
 
