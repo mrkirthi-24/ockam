@@ -35,7 +35,7 @@ async fn rpc(
 }
 
 async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Result<()> {
-    let vault = opts.state.get_vault_by_name(&cmd.vault).await?;
+    let vault = opts.state.get_vault(&cmd.vault).await?;
     let idt = {
         let identities_creation = opts
             .state

@@ -128,8 +128,14 @@ impl BackgroundNode {
     /// Make a route to the node and connect using TCP
     async fn create_route(&self) -> miette::Result<Route> {
         let mut route = self.to.clone();
-        let node_state = self.cli_state.nodes.get(&self.node_name)?;
-        let port = node_state.config().setup().api_transport()?.addr.port();
+        let node_info = self.cli_state.get_node(&self.node_name).await?;
+        let port = node_info.api_transport_port().expect(
+            format!(
+                "an api transport should have been started for node {}",
+                &self.node_name
+            )
+            .as_str(),
+        );
         let addr_str = format!("localhost:{port}");
         let addr = self
             .tcp_transport

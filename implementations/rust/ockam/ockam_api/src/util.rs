@@ -384,7 +384,7 @@ pub mod test_utils {
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
 
-    use crate::cli_state::{random_name, traits::*, CliState, NodeConfig, VaultConfig};
+    use crate::cli_state::{random_name, traits::*, CliState, VaultConfig};
     use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
     use crate::nodes::service::{
         NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -473,8 +473,7 @@ pub mod test_utils {
         //     .unwrap();
 
         let node_name = random_name();
-        let node_config = NodeConfig::try_from(&cli_state).unwrap();
-        cli_state.nodes.create(&node_name, node_config)?;
+        cli_state.create_node(&node_name).await.unwrap();
 
         let node_manager = InMemoryNode::new(
             context,

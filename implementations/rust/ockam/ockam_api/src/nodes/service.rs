@@ -167,11 +167,8 @@ impl NodeManager {
     }
 
     /// Delete the cli state related to the current node when launched in-memory
-    pub fn delete_node(&self) -> Result<()> {
-        Ok(self
-            .cli_state
-            .nodes
-            .delete_sigkill(self.node_name().as_str(), false)?)
+    pub async fn delete_node(&self) -> Result<()> {
+        Ok(self.cli_state.delete_node(&self.node_name()).await?)
     }
 }
 
@@ -366,7 +363,6 @@ impl NodeManager {
 
         debug!("create the identity repository");
         let cli_state = general_options.cli_state;
-        let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
         let identities_repository: Arc<dyn IdentitiesRepository> =
             cli_state.identities_repository().await?;
@@ -375,7 +371,7 @@ impl NodeManager {
 
         //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
         //trait instead),  or pass it from the general_options always.
-        let vault: Vault = node_state.config().vault().await?;
+        let vault: Vault = cli_state.get_node_vault(&general_options.node_name).await?;
         let identities_repository: Arc<dyn IdentitiesRepository> = Arc::new(match general_options
             .pre_trusted_identities
         {

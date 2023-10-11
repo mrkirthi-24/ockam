@@ -8,7 +8,7 @@ use ockam::{Context, Result, TcpTransport};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_transport_tcp::TcpListenerOptions;
 
-use crate::cli_state::{add_project_info_to_node_state, init_node_state, CliState};
+use crate::cli_state::CliState;
 use crate::cloud::Controller;
 use crate::config::cli::TrustContextConfig;
 use crate::nodes::service::{
@@ -81,15 +81,15 @@ impl InMemoryNode {
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
 
-        init_node_state(
-            cli_state,
-            &defaults.node_name,
-            vault.as_deref(),
-            identity.as_deref(),
-        )
-        .await?;
-
-        add_project_info_to_node_state(&defaults.node_name, cli_state, project_path).await?;
+        // init_node_state(
+        //     cli_state,
+        //     &defaults.node_name,
+        //     vault.as_deref(),
+        //     identity.as_deref(),
+        // )
+        // .await?;
+        //
+        // add_project_info_to_node_state(&defaults.node_name, cli_state, project_path).await?;
 
         let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
         let bind = defaults.tcp_listener_address;

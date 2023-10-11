@@ -22,7 +22,9 @@ pub use crate::cli_state::traits::*;
 pub use crate::cli_state::trust_contexts::*;
 use crate::cli_state::user_info::UsersInfoState;
 pub use crate::cli_state::vaults::*;
+use crate::config::lookup::ProjectLookup;
 use crate::enroll::enrollment::EnrollStatus;
+use crate::nodes::models::transport::CreateTransportJson;
 
 pub mod credentials;
 pub mod nodes;
@@ -106,7 +108,6 @@ impl From<CliStateError> for ockam_core::Error {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CliState {
     pub vaults: VaultsState,
-    pub nodes: NodesState,
     pub spaces: SpacesState,
     pub projects: ProjectsState,
     pub credentials: CredentialsState,
@@ -133,7 +134,6 @@ impl CliState {
         let dir = default.as_path();
         let state = Self {
             vaults: VaultsState::init(dir).await?,
-            nodes: NodesState::init(dir).await?,
             spaces: SpacesState::init(dir).await?,
             projects: ProjectsState::init(dir).await?,
             credentials: CredentialsState::init(dir).await?,
@@ -162,8 +162,12 @@ impl CliState {
         self.create_identity(&self::random_name()).await
     }
 
-    pub async fn get_vault_by_name(&self, vault_name: &str) -> Result<Vault> {
+    pub async fn get_vault(&self, vault_name: &str) -> Result<Vault> {
         todo!("get_vault_by_name")
+    }
+
+    pub async fn get_node_vault(&self, node_name: &str) -> Result<Vault> {
+        todo!("get_node_vault")
     }
 
     pub async fn policies_repository(&self) -> Result<Arc<dyn PoliciesRepository>> {
@@ -285,6 +289,22 @@ impl CliState {
         //     .unwrap_or_else(|_| "default".to_string())
     }
 
+    pub async fn create_node(&self, node_name: &str) -> Result<NodeInfo> {
+        todo!("create_node")
+    }
+
+    pub async fn get_node(&self, node_name: &str) -> Result<NodeInfo> {
+        todo!("get_node_by_name")
+    }
+
+    pub async fn delete_node(&self, node_name: &str) -> Result<()> {
+        todo!("get_node_by_name")
+    }
+
+    pub async fn get_default_node(&self) -> Result<NodeInfo> {
+        todo!("get_default_node")
+    }
+
     /// fault identity but if it has not been initialized yet
     // /// then initialize it
     // pub async fn initialize_identity_if_default(opts: &CommandGlobalOpts, name: &Option<String>) {
@@ -368,16 +388,15 @@ impl CliState {
 
     pub fn delete_at(root_path: &PathBuf) -> Result<()> {
         // Delete nodes' state and processes, if possible
-        let nodes_state = NodesState::new(root_path);
-        let _ = nodes_state.list().map(|nodes| {
-            nodes.iter().for_each(|n| {
-                let _ = n.delete_sigkill(true);
-            });
-        });
+        // let nodes_state = NodesState::new(root_path);
+        // let _ = nodes_state.list().map(|nodes| {
+        //     nodes.iter().for_each(|n| {
+        //         let _ = n.delete_sigkill(true);
+        //     });
+        // });
 
         // Delete all other state directories
         for dir in &[
-            nodes_state.dir(),
             VaultsState::new(root_path).dir(),
             SpacesState::new(root_path).dir(),
             ProjectsState::new(root_path).dir(),
@@ -528,17 +547,29 @@ impl NamedIdentity {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct NodeInfo {
     name: String,
     identifier: Identifier,
+    verbosity: u8,
+    is_authority_node: bool,
+    project: Option<ProjectLookup>,
+    api_transport: Option<CreateTransportJson>,
+    default_vault_name: String,
+    pid: Option<i32>,
 }
 
 impl NodeInfo {
     pub fn name(&self) -> String {
         self.name.clone()
     }
+
     pub fn identifier(&self) -> Identifier {
         self.identifier.clone()
+    }
+
+    pub fn api_transport_port(&self) -> Option<u16> {
+        self.api_transport.map(|t| t.addr.port())
     }
 }
 
@@ -550,7 +581,6 @@ impl CliState {
         std::fs::create_dir_all(dir.join("defaults"))?;
         let state = Self {
             vaults: VaultsState::init(dir).await?,
-            nodes: NodesState::init(dir).await?,
             spaces: SpacesState::init(dir).await?,
             projects: ProjectsState::init(dir).await?,
             credentials: CredentialsState::init(dir).await?,
@@ -566,7 +596,6 @@ impl CliState {
         std::fs::create_dir_all(dir.join("defaults"))?;
         Ok(Self {
             vaults: VaultsState::load(dir)?,
-            nodes: NodesState::load(dir)?,
             spaces: SpacesState::load(dir)?,
             projects: ProjectsState::load(dir)?,
             credentials: CredentialsState::load(dir)?,
@@ -635,14 +664,13 @@ mod tests {
         // Nodes
         let node_name = {
             let name = random_name();
-            let config = NodeConfig::try_from(&sut).unwrap();
 
-            let state = sut.nodes.create(&name, config).unwrap();
-            let got = sut.nodes.get(&name).unwrap();
-            assert_eq!(got, state);
+            let node_info = sut.create_node(&name).await.unwrap();
+            let got = sut.get_node(&name).await.unwrap();
+            assert_eq!(got, node_info);
 
-            let got = sut.nodes.default().unwrap();
-            assert_eq!(got, state);
+            let got = sut.get_default_node().await.unwrap();
+            assert_eq!(got, node_info);
 
             name
         };
@@ -785,7 +813,6 @@ mod tests {
 
         sut.spaces.delete(&space_name).unwrap();
         sut.projects.delete(&project_name).unwrap();
-        sut.nodes.delete(&node_name).unwrap();
         sut.vaults.delete(&vault_name).unwrap();
 
         ctx.stop().await?;
