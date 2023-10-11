@@ -1,4 +1,3 @@
-use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
@@ -6,7 +5,7 @@ use ockam_core::Result;
 use ockam_core::{async_trait, Error};
 
 use crate::models::{ChangeHistory, Identifier};
-use crate::AttributesEntry;
+use crate::{AttributesEntry, Identity};
 
 /// Repository for data related to identities: key changes and attributes
 #[async_trait]
@@ -59,22 +58,30 @@ pub trait IdentityAttributesWriter: Send + Sync + 'static {
 #[async_trait]
 pub trait IdentitiesWriter: Send + Sync + 'static {
     /// Store changes if there are new key changes associated to that identity
-    async fn update_identity(
-        &self,
-        identifier: &Identifier,
-        change_history: &ChangeHistory,
-    ) -> Result<()>;
+    async fn create_identity(&self, identity: &Identity, name: Option<&str>) -> Result<()>;
+
+    /// Store changes if there are new key changes associated to that identity
+    async fn update_identity(&self, identity: &Identity) -> Result<()>;
+
+    /// Delete an identity given its identifier
+    async fn delete_identity(&self, identifier: &Identifier) -> Result<()>;
+
+    /// Delete an identity given its name
+    async fn delete_identity_by_name(&self, name: &str) -> Result<()>;
 }
 
-/// Trait implementing read access to identiets
+/// Trait implementing read access to identities
 #[async_trait]
 pub trait IdentitiesReader: Send + Sync + 'static {
-    /// Return a persisted identity
-    async fn retrieve_identity(&self, identifier: &Identifier) -> Result<Option<ChangeHistory>>;
+    /// Return the change history of a persisted identity
+    async fn get_change_history_optional(
+        &self,
+        identifier: &Identifier,
+    ) -> Result<Option<ChangeHistory>>;
 
-    /// Return a persisted identity that is expected to be present and return and Error if this is not the case
-    async fn get_identity(&self, identifier: &Identifier) -> Result<ChangeHistory> {
-        match self.retrieve_identity(identifier).await? {
+    /// Return the change history of a persisted identity
+    async fn get_change_history(&self, identifier: &Identifier) -> Result<ChangeHistory> {
+        match self.get_change_history_optional(identifier).await? {
             Some(change_history) => Ok(change_history),
             None => Err(Error::new(
                 Origin::Core,

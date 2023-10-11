@@ -1,5 +1,5 @@
 use crate::expr::Expr;
-use crate::traits::PolicyStorage;
+use crate::traits::PoliciesRepository;
 use crate::types::{Action, Resource};
 use core::fmt;
 use ockam_core::async_trait;
@@ -70,8 +70,8 @@ impl Inner {
 }
 
 #[async_trait]
-impl PolicyStorage for Memory {
-    async fn del_policy(&self, r: &Resource, a: &Action) -> Result<()> {
+impl PoliciesRepository for Memory {
+    async fn delete_policy(&self, r: &Resource, a: &Action) -> Result<()> {
         self.inner.write().unwrap().del_policy(r, a);
         Ok(())
     }
@@ -85,7 +85,7 @@ impl PolicyStorage for Memory {
         Ok(())
     }
 
-    async fn policies(&self, r: &Resource) -> Result<Vec<(Action, Expr)>> {
+    async fn get_policies_by_resource(&self, r: &Resource) -> Result<Vec<(Action, Expr)>> {
         Ok(self.inner.write().unwrap().policies(r))
     }
 }

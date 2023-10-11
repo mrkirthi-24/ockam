@@ -259,7 +259,6 @@ pub fn is_tty<S: io_lifetimes::AsFilelike>(s: S) -> bool {
 mod tests {
     use ockam_api::address::extract_address_value;
     use ockam_api::cli_state;
-    use ockam_api::cli_state::identities::IdentityConfig;
     use ockam_api::cli_state::traits::StateDirTrait;
     use ockam_api::cli_state::{NodeConfig, VaultConfig};
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
@@ -326,17 +325,7 @@ mod tests {
         let v_config = VaultConfig::default();
         cli_state.vaults.create_async(&v_name, v_config).await?;
         let v = cli_state.vaults.get(&v_name)?.get().await?;
-        let idt = cli_state
-            .get_identities(v)
-            .await
-            .unwrap()
-            .identities_creation()
-            .create_identity()
-            .await?;
-        let idt_config = IdentityConfig::new(idt.identifier()).await;
-        cli_state
-            .identities
-            .create(cli_state::random_name(), idt_config)?;
+        cli_state.create_identity_with_random_name().await?;
 
         let n_state = cli_state
             .nodes

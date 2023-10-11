@@ -1,5 +1,6 @@
-use miette::miette;
 use std::net::{SocketAddrV4, SocketAddrV6};
+
+use miette::miette;
 
 use ockam::TcpTransport;
 use ockam_core::errcode::{Kind, Origin};
@@ -49,7 +50,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Result<Route> {
                     Origin::Api,
                     Kind::Invalid,
                     "unexpected code: node. clean_multiaddr should have been called",
-                ))
+                ));
             }
 
             code @ (Ip4::CODE | Ip6::CODE | DnsAddr::CODE) => {
@@ -57,7 +58,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Result<Route> {
                     Origin::Api,
                     Kind::Invalid,
                     format!("unexpected code: {code}. The address must be a local address {ma}"),
-                ))
+                ));
             }
 
             other => {
@@ -373,7 +374,6 @@ pub fn local_worker(code: &Code) -> Result<bool> {
 
 #[cfg(test)]
 pub mod test_utils {
-    use ockam::identity::storage::InMemoryStorage;
     use ockam::identity::utils::AttributesBuilder;
     use ockam::identity::{Identifier, Identity, MAX_CREDENTIAL_VALIDITY};
     use ockam::identity::{SecureChannels, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
@@ -381,13 +381,10 @@ pub mod test_utils {
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControls;
     use ockam_core::AsyncTryClone;
-
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
 
-    use crate::cli_state::{
-        random_name, traits::*, CliState, IdentityConfig, NodeConfig, VaultConfig,
-    };
+    use crate::cli_state::{random_name, traits::*, CliState, NodeConfig, VaultConfig};
     use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
     use crate::nodes::service::{
         NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -431,16 +428,13 @@ pub mod test_utils {
             .get()
             .await?;
 
-        let identity_name = random_name();
-
         // Premise: we need an identity and a credential before the node manager starts.
         // Since the LMDB can trigger some race conditions, we first use the memory storage
         // export the identity and credentials,then import in the LMDB after secure-channel
         // has been re-created
         let secure_channels = SecureChannels::builder()
             .with_vault(vault)
-            .with_identities_repository(cli_state.identities.identities_repository().await?)
-            .with_identities_storage(InMemoryStorage::create())
+            .with_identities_repository(cli_state.identities_repository().await?)
             .build();
 
         let identity = create_random_identity(&secure_channels).await?;
@@ -466,8 +460,17 @@ pub mod test_utils {
 
         drop(secure_channels);
 
-        let config = IdentityConfig::new(identity.identifier()).await;
-        cli_state.identities.create(&identity_name, config).unwrap();
+        // let identity_name = random_name();
+        // let config = IdentityConfig::new(identity.identifier()).await;
+        // cli_state
+        //     .identities_repository()
+        //     .await?
+        //     .create_identity(
+        //         identity.identifier(),
+        //         identity.change_history(),
+        //         Some(identity_name),
+        //     )
+        //     .unwrap();
 
         let node_name = random_name();
         let node_config = NodeConfig::try_from(&cli_state).unwrap();

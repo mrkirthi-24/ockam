@@ -13,11 +13,12 @@ use ockam_core::{Error, Result};
 
 /// We use sqlx as our primary interface for interacting with the database
 /// The database driver is currently Sqlite
-pub struct SqlxDb {
+pub struct SqlxDatabase {
+    /// Pool of connections to the database
     pub pool: SqlitePool,
 }
 
-impl Deref for SqlxDb {
+impl Deref for SqlxDatabase {
     type Target = SqlitePool;
 
     fn deref(&self) -> &Self::Target {
@@ -25,7 +26,7 @@ impl Deref for SqlxDb {
     }
 }
 
-impl SqlxDb {
+impl SqlxDatabase {
     /// Constructor for a database persisted on disk
     pub async fn create<P: AsRef<Path>>(path: P) -> Result<Self> {
         // Not sure we need this
@@ -46,7 +47,7 @@ impl SqlxDb {
     pub async fn in_memory() -> Result<Self> {
         debug!("create an in memory database");
         let pool = Self::create_in_memory_connection_pool().await?;
-        let db = SqlxDb { pool };
+        let db = SqlxDatabase { pool };
         db.migrate().await?;
         Ok(db)
     }
@@ -55,7 +56,7 @@ impl SqlxDb {
         debug!("create a database at {}", path.display());
         // Creates database file if it doesn't exist
         let pool = Self::create_connection_pool(path).await?;
-        let db = SqlxDb { pool };
+        let db = SqlxDatabase { pool };
         db.migrate().await?;
         Ok(db)
     }
@@ -84,20 +85,25 @@ impl SqlxDb {
             .map_err(Self::map_migrate_err)
     }
 
+    /// Map a sqlx error into an ockam error
     pub fn map_sql_err(err: sqlx::Error) -> Error {
         Error::new(Origin::Application, Kind::Io, err)
     }
 
-    pub fn map_decode_err(err: minicbor::decode::Error) -> Error {
+    /// Map a sqlx migration error into an ockam error
+    pub fn map_migrate_err(err: sqlx::migrate::MigrateError) -> Error {
         Error::new(Origin::Application, Kind::Io, err)
     }
 
-    pub fn map_migrate_err(err: sqlx::migrate::MigrateError) -> Error {
+    /// Map a minicbor decode error into an ockam error
+    pub fn map_decode_err(err: minicbor::decode::Error) -> Error {
         Error::new(Origin::Application, Kind::Io, err)
     }
 }
 
+/// This trait provides some syntax for transforming sqlx errors into ockam errors
 pub trait FromSqlxError<T> {
+    /// Make an ockam core Error
     fn into_core(self) -> Result<T>;
 }
 
@@ -119,7 +125,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_identity_table() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
-        let db = SqlxDb::create(db_file.path()).await?;
+        let db = SqlxDatabase::create(db_file.path()).await?;
         let inserted = sqlx::query("INSERT INTO identity VALUES (?1, ?2)")
             .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")
             .bind("123".as_bytes())
@@ -134,7 +140,7 @@ mod tests {
     #[tokio::test]
     async fn test_query() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
-        let db = SqlxDb::create(db_file.path()).await?;
+        let db = SqlxDatabase::create(db_file.path()).await?;
         sqlx::query("INSERT INTO identity VALUES (?1, ?2)")
             .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")
             .bind("123".as_bytes())

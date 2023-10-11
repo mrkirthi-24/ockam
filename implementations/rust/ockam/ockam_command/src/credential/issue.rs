@@ -1,6 +1,5 @@
 use ockam_core::compat::collections::HashMap;
 
-use crate::identity::{get_identity_name, initialize_identity_if_default};
 use crate::{
     util::{node_rpc, parsers::identity_identifier_parser},
     vault::default_vault_name,
@@ -38,7 +37,6 @@ pub struct IssueCommand {
 
 impl IssueCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.as_identity);
         node_rpc(run_impl, (opts, self));
     }
 
@@ -62,9 +60,10 @@ async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> miette::Result<()> {
-    let identity_name = get_identity_name(&opts.state, &cmd.as_identity);
-    let ident_state = opts.state.identities.get(&identity_name)?;
-    let auth_identity_identifier = ident_state.config().identifier().clone();
+    let authority = opts
+        .state
+        .get_identifier_by_optional_name(&cmd.as_identity)
+        .await?;
 
     let vault_name = cmd
         .vault
@@ -72,13 +71,9 @@ async fn run_impl(
         .unwrap_or_else(|| default_vault_name(&opts.state));
     let vault = opts.state.vaults.get(&vault_name)?.get().await?;
     let identities = opts.state.get_identities(vault).await?;
-    let issuer = ident_state.identifier();
 
     let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-        .with_attribute(
-            TRUST_CONTEXT_ID.to_vec(),
-            auth_identity_identifier.to_string(),
-        );
+        .with_attribute(TRUST_CONTEXT_ID.to_vec(), authority.to_string());
     for (key, value) in cmd.attributes()? {
         attributes_builder =
             attributes_builder.with_attribute(key.as_bytes().to_vec(), value.as_bytes().to_vec());
@@ -88,7 +83,7 @@ async fn run_impl(
         .credentials()
         .credentials_creation()
         .issue_credential(
-            &issuer,
+            &authority,
             cmd.identity_identifier(),
             attributes_builder.build(),
             MAX_CREDENTIAL_VALIDITY,

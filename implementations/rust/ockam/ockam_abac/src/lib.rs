@@ -27,7 +27,8 @@ pub use error::{EvalError, ParseError};
 pub use eval::eval;
 pub use expr::Expr;
 pub use policy::PolicyAccessControl;
-pub use traits::PolicyStorage;
+pub use storage::*;
+pub use traits::PoliciesRepository;
 pub use types::{Action, Resource, Subject};
 
 #[cfg(feature = "std")]

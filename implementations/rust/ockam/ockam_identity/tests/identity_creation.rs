@@ -12,7 +12,7 @@ async fn create_and_retrieve() -> Result<()> {
     let identities_keys = identities.identities_keys();
 
     let identity = identities_creation.create_identity().await?;
-    let actual = repository.get_identity(identity.identifier()).await?;
+    let actual = repository.get_change_history(identity.identifier()).await?;
 
     let actual = Identity::import_from_change_history(
         Some(identity.identifier()),
@@ -25,7 +25,9 @@ async fn create_and_retrieve() -> Result<()> {
         "the identity can be retrieved from the repository"
     );
 
-    let actual = repository.retrieve_identity(identity.identifier()).await?;
+    let actual = repository
+        .get_change_history_optional(identity.identifier())
+        .await?;
     assert!(actual.is_some());
     let actual = Identity::import_from_change_history(
         Some(identity.identifier()),
@@ -39,7 +41,9 @@ async fn create_and_retrieve() -> Result<()> {
     );
 
     let another_identifier = Identifier::from_str("Ie92f183eb4c324804ef4d62962dea94cf095a265")?;
-    let missing = repository.retrieve_identity(&another_identifier).await?;
+    let missing = repository
+        .get_change_history_optional(&another_identifier)
+        .await?;
     assert_eq!(missing, None, "a missing identity returns None");
 
     let root_key = identities_keys.get_secret_key(&identity).await;
@@ -60,7 +64,7 @@ async fn create_p256() -> Result<()> {
         .with_random_key(SigningKeyType::ECDSASHA256CurveP256)
         .build()
         .await?;
-    let actual = repository.get_identity(identity.identifier()).await?;
+    let actual = repository.get_change_history(identity.identifier()).await?;
 
     let actual = Identity::import_from_change_history(
         Some(identity.identifier()),

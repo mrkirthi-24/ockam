@@ -1,21 +1,19 @@
-use crate::util::duration::duration_parser;
-use clap::Args;
-use ockam_api::config::cli::TrustContextConfig;
-use ockam_api::identity::EnrollmentTicket;
 use std::collections::HashMap;
 use std::time::Duration;
 
+use clap::Args;
 use miette::{miette, IntoDiagnostic};
+
+use crate::util::duration::duration_parser;
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::enrollment_tokens::{Members, TokenIssuer};
 use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use ockam_api::config::cli::TrustContextConfig;
 use ockam_api::config::lookup::{ProjectAuthority, ProjectLookup};
+use ockam_api::identity::EnrollmentTicket;
 use ockam_api::nodes::InMemoryNode;
-
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
-
-use crate::identity::{get_identity_name, initialize_identity_if_default};
 
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
@@ -27,8 +25,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/ticket/after_long_help.txt"
 /// Add members to a project as an authorised enroller.
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct TicketCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
@@ -48,13 +46,12 @@ pub struct TicketCommand {
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     attributes: Vec<String>,
 
-    #[arg(long = "expires-in", value_name = "DURATION", conflicts_with = "member", value_parser=duration_parser)]
+    #[arg(long = "expires-in", value_name = "DURATION", conflicts_with = "member", value_parser = duration_parser)]
     expires_in: Option<Duration>,
 }
 
 impl TicketCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(run_impl, (opts, self));
     }
 
@@ -104,7 +101,10 @@ async fn run_impl(
                 ));
             }
         };
-        let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+        let identity = opts
+            .state
+            .get_identity_name_or_default(&cmd.cloud_opts.identity)
+            .await?;
         let authority_identifier = tc
             .authority()
             .into_diagnostic()?
@@ -117,7 +117,10 @@ async fn run_impl(
         node.create_authority_client(&authority_identifier, addr, Some(identity))
             .await?
     } else if let (Some(p), Some(a)) = get_project(&opts.state, &cmd.to).await? {
-        let identity = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+        let identity = opts
+            .state
+            .get_identity_name_or_default(&cmd.cloud_opts.identity)
+            .await?;
         project = Some(p);
         node.create_authority_client(a.identity_id(), a.address(), Some(identity))
             .await?

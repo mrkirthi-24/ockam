@@ -23,7 +23,6 @@ use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
-use crate::identity::initialize_identity_if_default;
 use crate::operation::util::check_for_completion;
 use crate::project::util::check_project_readiness;
 use crate::terminal::OckamColor;
@@ -50,7 +49,6 @@ pub struct EnrollCommand {
 
 impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.identity);
         node_rpc(rpc, (opts, self));
     }
 }

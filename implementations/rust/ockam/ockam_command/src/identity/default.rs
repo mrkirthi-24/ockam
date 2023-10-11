@@ -1,9 +1,12 @@
-use crate::util::local_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
+
 use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_node::Context;
+
+use crate::util::node_rpc;
+use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/default/after_long_help.txt");
@@ -22,15 +25,17 @@ pub struct DefaultCommand {
 
 impl DefaultCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        local_cmd(run_impl(options, self));
+        node_rpc(run_impl, (options, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> {
-    let state = opts.state.identities;
-    let idt = state.get(&cmd.name)?;
+async fn run_impl(
+    _ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, DefaultCommand),
+) -> miette::Result<()> {
+    let is_default = opts.state.is_default_identity_by_name(&cmd.name).await?;
     // If it exists, warn the user and exit
-    if state.is_default(idt.name())? {
+    if is_default {
         Err(miette!(
             "The identity '{}' is already the default",
             &cmd.name
@@ -38,7 +43,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DefaultCommand) -> miette::Result<()> 
     }
     // Otherwise, set it as default
     else {
-        state.set_default(idt.name())?;
+        opts.state.set_as_default_identity(&cmd.name).await?;
         opts.terminal
             .stdout()
             .plain(fmt_ok!("The identity '{}' is now the default", &cmd.name))

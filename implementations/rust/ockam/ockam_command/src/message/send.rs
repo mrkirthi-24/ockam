@@ -11,8 +11,6 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
@@ -59,7 +57,6 @@ pub struct SendCommand {
 
 impl SendCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(rpc, (opts, self))
     }
 }
@@ -88,7 +85,10 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> mie
                 .ask(ctx, req(&to, msg_bytes))
                 .await?
         } else {
-            let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+            let identity_name = opts
+                .state
+                .get_identity_name_or_default(&cmd.cloud_opts.identity)
+                .await?;
             let trust_context_config = cmd.trust_context_opts.to_config(&opts.state)?.build();
 
             let node_manager = InMemoryNode::start_node(

@@ -1,4 +1,4 @@
-use crate::traits::PolicyStorage;
+use crate::traits::PoliciesRepository;
 use crate::types::{Action, Resource};
 use crate::AbacAccessControl;
 use crate::{Env, Expr};
@@ -19,7 +19,7 @@ use tracing as log;
 pub struct PolicyAccessControl {
     resource: Resource,
     action: Action,
-    policies: Arc<dyn PolicyStorage>,
+    policies: Arc<dyn PoliciesRepository>,
     repository: Arc<dyn IdentitiesRepository>,
     environment: Env,
 }
@@ -43,7 +43,7 @@ impl PolicyAccessControl {
     /// the given authenticated storage, adding them the given environment,
     /// which may already contain other resource, action or subject attributes.
     pub fn new(
-        policies: Arc<dyn PolicyStorage>,
+        policies: Arc<dyn PoliciesRepository>,
         repository: Arc<dyn IdentitiesRepository>,
         r: Resource,
         a: Action,

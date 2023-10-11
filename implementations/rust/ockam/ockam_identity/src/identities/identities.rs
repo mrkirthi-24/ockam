@@ -1,8 +1,8 @@
 use crate::identities::{IdentitiesKeys, IdentitiesRepository};
-use crate::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysStorage};
+use crate::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysSqlxDatabase};
 use crate::{
     Credentials, CredentialsServer, CredentialsServerModule, Identifier, IdentitiesBuilder,
-    IdentitiesCreation, IdentitiesReader, IdentitiesStorage, Identity, PurposeKeys, Vault,
+    IdentitiesCreation, IdentitiesReader, IdentitiesSqlxDatabase, Identity, PurposeKeys, Vault,
 };
 
 use ockam_core::compat::sync::Arc;
@@ -35,7 +35,10 @@ impl Identities {
 
     /// Get an [`Identity`] from the repository
     pub async fn get_identity(&self, identifier: &Identifier) -> Result<Identity> {
-        let change_history = self.identities_repository.get_identity(identifier).await?;
+        let change_history = self
+            .identities_repository
+            .get_change_history(identifier)
+            .await?;
         Identity::import_from_change_history(
             Some(identifier),
             change_history,
@@ -115,8 +118,8 @@ impl Identities {
     pub fn builder() -> IdentitiesBuilder {
         IdentitiesBuilder {
             vault: Vault::create(),
-            repository: IdentitiesStorage::create(),
-            purpose_keys_repository: PurposeKeysStorage::create(),
+            repository: IdentitiesSqlxDatabase::create(),
+            purpose_keys_repository: PurposeKeysSqlxDatabase::create(),
         }
     }
 }

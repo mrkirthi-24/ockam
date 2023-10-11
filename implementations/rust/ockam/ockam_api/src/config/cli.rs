@@ -49,30 +49,6 @@ fn default_lookup() -> ConfigLookup {
     ConfigLookup::default()
 }
 
-impl ConfigValues for LegacyCliConfig {
-    fn default_values() -> Self {
-        Self {
-            dir: Some(Self::dir()),
-            lookup: default_lookup(),
-        }
-    }
-}
-
-impl LegacyCliConfig {
-    /// Determine the default storage location for the ockam config
-    pub fn dir() -> PathBuf {
-        cli_state::CliState::default_dir().unwrap()
-    }
-
-    /// This function could be zero-copy if we kept the lock on the
-    /// backing store for as long as we needed it.  Because this may
-    /// have unwanted side-effects, instead we eagerly copy data here.
-    /// This may be optimised in the future!
-    pub fn lookup(&self) -> &ConfigLookup {
-        &self.lookup
-    }
-}
-
 /// A configuration struct to serialize and deserialize a trust context
 /// used within the ockam CLI and ockam node
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

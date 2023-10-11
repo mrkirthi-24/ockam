@@ -1,11 +1,3 @@
-use crate::identity::models::Identifier;
-use crate::identity::storage::Storage;
-use crate::identity::{
-    secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
-    IdentitiesKeys, IdentitiesRepository, SecureChannel, SecureChannelListener,
-    SecureChannelRegistry, SecureChannels, SecureChannelsBuilder,
-};
-use crate::identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
@@ -17,6 +9,13 @@ use ockam_identity::{PurposeKeys, Vault, VaultStorage};
 use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
 use ockam_vault::SigningSecretKeyHandle;
 
+use crate::identity::models::Identifier;
+use crate::identity::{
+    secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
+    IdentitiesKeys, IdentitiesRepository, SecureChannel, SecureChannelListener,
+    SecureChannelRegistry, SecureChannels, SecureChannelsBuilder,
+};
+use crate::identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
 use crate::remote::{RemoteRelay, RemoteRelayInfo, RemoteRelayOptions};
 use crate::stream::Stream;
 use crate::OckamError;
@@ -44,19 +43,6 @@ pub struct Node {
 /// }
 ///
 ///
-/// ```
-/// Here is another example where we specify a local LMDB database to store identity attributes
-/// ```rust
-/// use std::sync::Arc;
-/// use ockam::{Node, Result};
-/// use ockam::LmdbStorage;
-/// use ockam_node::Context;
-///
-/// async fn make_node(ctx: Context) -> Result<Node> {
-///    let lmdb_storage = Arc::new(LmdbStorage::new("identities").await?);
-///    let node = Node::builder().with_identities_storage(lmdb_storage).build(&ctx).await?;
-///    Ok(node)
-/// }
 /// ```
 pub fn node(ctx: Context) -> Node {
     Node {
@@ -351,12 +337,6 @@ impl NodeBuilder {
     /// With Software Vault with given Storage
     pub fn with_vault_storage(mut self, storage: VaultStorage) -> Self {
         self.builder = self.builder.with_vault_storage(storage);
-        self
-    }
-
-    /// Set a specific storage for identities
-    pub fn with_identities_storage(mut self, storage: Arc<dyn Storage>) -> Self {
-        self.builder = self.builder.with_identities_storage(storage);
         self
     }
 

@@ -1,18 +1,20 @@
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+use serde_json as json;
+use tracing::trace;
+
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::utils::now;
 use ockam::identity::{
     AttributesEntry, Identifier, IdentitiesReader, IdentitiesRepository, IdentitiesWriter,
-    IdentityAttributesReader, IdentityAttributesWriter,
+    Identity, IdentityAttributesReader, IdentityAttributesWriter,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{collections::HashMap, string::String, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
-use serde::{Deserialize, Serialize};
-use serde_json as json;
-use std::path::PathBuf;
-use tracing::trace;
 
 #[derive(Clone)]
 pub struct BootstrapedIdentityStore {
@@ -91,24 +93,36 @@ impl IdentityAttributesWriter for BootstrapedIdentityStore {
 
 #[async_trait]
 impl IdentitiesReader for BootstrapedIdentityStore {
-    async fn retrieve_identity(&self, identifier: &Identifier) -> Result<Option<ChangeHistory>> {
-        self.repository.retrieve_identity(identifier).await
+    async fn get_change_history_optional(
+        &self,
+        identifier: &Identifier,
+    ) -> Result<Option<ChangeHistory>> {
+        self.repository
+            .get_change_history_optional(identifier)
+            .await
     }
-    async fn get_identity(&self, identifier: &Identifier) -> Result<ChangeHistory> {
-        self.repository.get_identity(identifier).await
+
+    async fn get_change_history(&self, identifier: &Identifier) -> Result<ChangeHistory> {
+        self.repository.get_change_history(identifier).await
     }
 }
 
 #[async_trait]
 impl IdentitiesWriter for BootstrapedIdentityStore {
-    async fn update_identity(
-        &self,
-        identifier: &Identifier,
-        change_history: &ChangeHistory,
-    ) -> Result<()> {
-        self.repository
-            .update_identity(identifier, change_history)
-            .await
+    async fn create_identity(&self, identity: &Identity, name: Option<&str>) -> Result<()> {
+        self.repository.create_identity(identity, name).await
+    }
+
+    async fn update_identity(&self, identity: &Identity) -> Result<()> {
+        self.repository.update_identity(identity).await
+    }
+
+    async fn delete_identity(&self, identifier: &Identifier) -> Result<()> {
+        self.repository.delete_identity(identifier).await
+    }
+
+    async fn delete_identity_by_name(&self, name: &str) -> Result<()> {
+        self.repository.delete_identity_by_name(name).await
     }
 }
 

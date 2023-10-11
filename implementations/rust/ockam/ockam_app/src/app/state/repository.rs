@@ -1,65 +1,61 @@
 use std::path::Path;
+use std::sync::Arc;
 
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
+use ockam::{SqlxDatabase, ToSqlxType};
 
-use crate::app::state::model::ModelState;
-use ockam::identity::storage::Storage;
-use ockam::LmdbStorage;
-use ockam_core::async_trait;
-
+use crate::app::state::model::{ModelState, TcpOutletRow};
 use crate::Result;
+use ockam_core::async_trait;
+use sqlx::*;
 
-const MODEL_STATE_ID: &str = "model_state";
-const MODEL_STATE_KEY: &str = "model_state_key";
-
-/// The ModelStateRepository is responsible for storing and loading
-/// ModelState data (user information, shared services etc...)
-/// The state must be stored everytime it is modified (see set_user_info in AppState for example)
-/// so that it can be loaded again when the application starts up
 #[async_trait]
 pub trait ModelStateRepository: Send + Sync + 'static {
     async fn store(&self, model_state: &ModelState) -> Result<()>;
-    async fn load(&self) -> Result<Option<ModelState>>;
+    async fn load(&self) -> Result<ModelState>;
 }
 
-/// This implementation of the ModelStateRepository piggy-backs for now on the LMDB storage
-/// which is used to store all the data related to identities.
-/// We will possibly store all data eventually using SQLite and in that case the ModelData
-/// can be a set of tables dedicated to the desktop application
-pub struct LmdbModelStateRepository {
-    storage: LmdbStorage,
+pub struct ModelStateSqlxDatabase {
+    database: Arc<SqlxDatabase>,
 }
 
-impl LmdbModelStateRepository {
+impl ModelStateSqlxDatabase {
     pub async fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
-        Ok(Self {
-            storage: LmdbStorage::new(path).await.map_err(|e| miette!(e))?,
-        })
+        Ok(Self::create(Arc::new(
+            SqlxDatabase::create(path).await.map_err(|e| miette!(e))?,
+        )))
+    }
+
+    pub fn create(database: Arc<SqlxDatabase>) -> Self {
+        Self { database }
     }
 }
 
-/// The implementation simply serializes / deserializes the ModelState as JSON
 #[async_trait]
-impl ModelStateRepository for LmdbModelStateRepository {
+impl ModelStateRepository for ModelStateSqlxDatabase {
     async fn store(&self, model_state: &ModelState) -> Result<()> {
-        self.storage
-            .set(
-                MODEL_STATE_ID,
-                MODEL_STATE_KEY.to_string(),
-                serde_json::to_vec(model_state)?,
-            )
-            .await
-            .map_err(|e| miette!(e))?;
+        for tcp_outlet in &model_state.tcp_outlets {
+            let query = query("INSERT INTO tcp_outlet VALUES (?, ?, ?, ?)")
+                .bind(tcp_outlet.socket_addr.to_sql())
+                .bind(tcp_outlet.worker_addr.to_sql())
+                .bind(tcp_outlet.alias.to_sql())
+                .bind(tcp_outlet.payload.as_ref().map(|p| p.to_sql()));
+            query
+                .execute(&self.database.pool)
+                .await
+                .map(|_| ())
+                .map_err(|e| miette!(e))?;
+        }
         Ok(())
     }
 
-    async fn load(&self) -> Result<Option<ModelState>> {
-        match self.storage.get(MODEL_STATE_ID, MODEL_STATE_KEY).await {
-            Err(e) => Err(miette!(e).into()),
-            Ok(None) => Ok(None),
-            Ok(Some(bytes)) => {
-                Ok(serde_json::from_slice(bytes.as_slice()).map_err(|e| miette!(e))?)
-            }
-        }
+    async fn load(&self) -> Result<ModelState> {
+        let query = query_as("SELECT * FROM tcp_outlet");
+        let rows: Vec<TcpOutletRow> = query
+            .fetch_all(&self.database.pool)
+            .await
+            .into_diagnostic()?;
+        let values: Result<Vec<_>> = rows.iter().map(|r| r.tcp_outlet_status()).collect();
+        Ok(ModelState::new(values?))
     }
 }

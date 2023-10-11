@@ -3,7 +3,6 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::cli_state;
-use ockam_api::cli_state::identities::IdentityConfig;
 use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_vault::{HandleToSecret, SigningSecretKeyHandle};
 
@@ -36,11 +35,7 @@ async fn rpc(
 }
 
 async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Result<()> {
-    let v_state = opts.state.vaults.get(&cmd.vault)?;
-    if !v_state.config().is_aws() {
-        return Err(miette!("Vault {} is not an AWS KMS vault", cmd.vault));
-    }
-    let vault = v_state.get().await?;
+    let vault = opts.state.get_vault_by_name(&cmd.vault).await?;
     let idt = {
         let identities_creation = opts
             .state
@@ -60,8 +55,6 @@ async fn run_impl(opts: CommandGlobalOpts, cmd: AttachKeyCommand) -> miette::Res
             .into_diagnostic()?
     };
     let idt_name = cli_state::random_name();
-    let idt_config = IdentityConfig::new(idt.identifier()).await;
-    opts.state.identities.create(&idt_name, idt_config)?;
     println!("Identity attached to vault: {idt_name}");
     Ok(())
 }

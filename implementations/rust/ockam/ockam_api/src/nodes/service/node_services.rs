@@ -39,7 +39,7 @@ use crate::{actions, resources};
 use super::NodeManagerWorker;
 
 impl NodeManager {
-    pub(super) async fn start_credentials_service_impl<'a>(
+    pub(super) async fn start_credentials_service_impl(
         &self,
         ctx: &Context,
         trust_context: TrustContext,
@@ -54,7 +54,7 @@ impl NodeManager {
             .start(
                 ctx,
                 trust_context,
-                self.identifier().clone(),
+                self.identifier().await?.clone(),
                 addr.clone(),
                 !oneway,
             )
@@ -538,7 +538,7 @@ impl NodeManagerWorker {
                 // if we are using the project we need to allow safe communication based on the
                 // project identifier
                 self.node_manager
-                    .policies
+                    .policies_repository
                     .set_policy(
                         &resources::INLET,
                         &actions::HANDLE_MESSAGE,

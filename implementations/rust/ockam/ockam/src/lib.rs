@@ -91,7 +91,7 @@ pub mod workers;
 pub use ockam_abac as abac;
 pub use ockam_identity as identity;
 #[cfg(feature = "std")]
-pub use ockam_identity::storage::lmdb_storage::*;
+pub use ockam_identity::database::*;
 
 pub use ockam_core::{
     allow, deny, errcode, route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage,

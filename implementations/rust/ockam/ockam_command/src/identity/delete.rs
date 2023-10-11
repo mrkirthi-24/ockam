@@ -2,7 +2,10 @@ use crate::util::node_rpc;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
+use std::str::FromStr;
 
+use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
 
@@ -35,13 +38,11 @@ async fn run_impl(
     _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let state = opts.state;
-    let idt = state.identities.get(&cmd.name)?;
     if opts
         .terminal
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this identity?")?
     {
-        state.delete_identity(idt)?;
+        opts.state.delete_identity_by_name(&cmd.name).await?;
         opts.terminal
             .stdout()
             .plain(fmt_ok!(

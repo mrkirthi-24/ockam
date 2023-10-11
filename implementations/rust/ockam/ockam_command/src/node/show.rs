@@ -67,7 +67,7 @@ fn print_node_info(
     node_name: &str,
     is_default: bool,
     status_is_up: bool,
-    default_id: Option<&str>,
+    default_id: Option<String>,
     services: Option<&ServiceList>,
     tcp_listeners: Option<&TransportList>,
     secure_channel_listeners: Option<&SecureChannelListenersList>,
@@ -205,12 +205,8 @@ pub async fn print_query_status(
             None,
         );
     } else {
-        let node_state = cli_state.nodes.get(node_name)?;
         // Get short id for the node
-        let default_id = match node_state.config().identity_config() {
-            Ok(resp) => resp.identifier().to_string(),
-            Err(_) => String::from("None"),
-        };
+        let node_identity_name = cli_state.get_node_identifier_name(node_name).await?;
 
         // Get list of services for the node
         let services: ServiceList = node.ask(ctx, api::list_services()).await?;
@@ -242,7 +238,7 @@ pub async fn print_query_status(
             node_name,
             is_default,
             true,
-            Some(&default_id),
+            node_identity_name,
             Some(&services),
             Some(&tcp_listeners),
             Some(&secure_channel_listeners),

@@ -1,15 +1,20 @@
-pub mod credentials;
-pub mod identities;
-pub mod nodes;
-pub mod projects;
-pub mod spaces;
-pub mod traits;
-pub mod trust_contexts;
-pub mod user_info;
-pub mod vaults;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
+
+use miette::Diagnostic;
+use rand::random;
+use thiserror::Error;
+
+use ockam::identity::{
+    Identifier, Identities, IdentitiesRepository, IdentitiesSqlxDatabase, Identity, Vault,
+};
+use ockam::SqlxDatabase;
+use ockam_abac::{PoliciesRepository, PolicySqlxDatabase};
+use ockam_core::compat::sync::Arc;
+use ockam_core::env::get_env_with_default;
+use ockam_node::Executor;
 
 pub use crate::cli_state::credentials::*;
-pub use crate::cli_state::identities::*;
 pub use crate::cli_state::nodes::*;
 pub use crate::cli_state::projects::*;
 pub use crate::cli_state::spaces::*;
@@ -17,17 +22,16 @@ pub use crate::cli_state::traits::*;
 pub use crate::cli_state::trust_contexts::*;
 use crate::cli_state::user_info::UsersInfoState;
 pub use crate::cli_state::vaults::*;
-use crate::config::cli::LegacyCliConfig;
-use miette::Diagnostic;
-use ockam::identity::Identifier;
-use ockam::identity::Identities;
-use ockam::identity::Vault;
-use ockam_core::compat::sync::Arc;
-use ockam_core::env::get_env_with_default;
-use ockam_node::Executor;
-use rand::random;
-use std::path::{Path, PathBuf};
-use thiserror::Error;
+use crate::enroll::enrollment::EnrollStatus;
+
+pub mod credentials;
+pub mod nodes;
+pub mod projects;
+pub mod spaces;
+pub mod traits;
+pub mod trust_contexts;
+pub mod user_info;
+pub mod vaults;
 
 type Result<T> = std::result::Result<T, CliStateError>;
 
@@ -102,7 +106,6 @@ impl From<CliStateError> for ockam_core::Error {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CliState {
     pub vaults: VaultsState,
-    pub identities: IdentitiesState,
     pub nodes: NodesState,
     pub spaces: SpacesState,
     pub projects: ProjectsState,
@@ -130,7 +133,6 @@ impl CliState {
         let dir = default.as_path();
         let state = Self {
             vaults: VaultsState::init(dir).await?,
-            identities: IdentitiesState::init(dir).await?,
             nodes: NodesState::init(dir).await?,
             spaces: SpacesState::init(dir).await?,
             projects: ProjectsState::init(dir).await?,
@@ -139,9 +141,196 @@ impl CliState {
             users_info: UsersInfoState::init(dir).await?,
             dir: dir.to_path_buf(),
         };
-        state.migrate()?;
         Ok(state)
     }
+
+    pub async fn identities_repository(&self) -> Result<Arc<dyn IdentitiesRepository>> {
+        Ok(Arc::new(IdentitiesSqlxDatabase::new(
+            self.database().await?,
+        )))
+    }
+
+    pub async fn get_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
+        todo!("get_identities")
+    }
+
+    pub async fn create_identity(&self, name: &str) -> Result<Identifier> {
+        todo!("create_identity")
+    }
+
+    pub async fn create_identity_with_random_name(&self) -> Result<Identifier> {
+        self.create_identity(&self::random_name()).await
+    }
+
+    pub async fn get_vault_by_name(&self, vault_name: &str) -> Result<Vault> {
+        todo!("get_vault_by_name")
+    }
+
+    pub async fn policies_repository(&self) -> Result<Arc<dyn PoliciesRepository>> {
+        Ok(Arc::new(PolicySqlxDatabase::new(self.database().await?)))
+    }
+
+    pub async fn database(&self) -> Result<Arc<SqlxDatabase>> {
+        Ok(Arc::new(SqlxDatabase::create(self.database_path()).await?))
+    }
+
+    pub fn database_path(&self) -> PathBuf {
+        self.dir.join("database.sqlite3")
+    }
+
+    pub async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
+        todo!("implement get_node_identifier")
+    }
+
+    pub async fn get_node_identifier(&self, node_name: &str) -> Result<Identifier> {
+        todo!("implement get_node_identifier")
+    }
+
+    pub async fn get_node_identifier_name(&self, node_name: &str) -> Result<Option<String>> {
+        todo!("implement get_node_identifier_name")
+    }
+
+    pub async fn get_identifier_by_name(&self, identifier_name: &str) -> Result<Identifier> {
+        todo!("implement get_node_identifier")
+    }
+
+    pub async fn get_named_identities(&self) -> Result<Vec<NamedIdentity>> {
+        todo!("implement get_node_identifier")
+    }
+
+    pub async fn get_identifier_by_optional_name(
+        &self,
+        identity_name: &Option<String>,
+    ) -> Result<Identifier> {
+        todo!("implement get_identifier_by_optional_name")
+    }
+
+    pub async fn get_identifier_by_optional_name_or_create_identity(
+        &self,
+        identity_name: &Option<String>,
+    ) -> Result<Identifier> {
+        todo!("implement get_identifier_by_optional_name")
+    }
+
+    pub async fn get_identity_by_optional_name(
+        &self,
+        identity_name: &Option<String>,
+    ) -> Result<Identity> {
+        todo!("implement get_node_identifier")
+    }
+
+    pub async fn is_default_identity_enrolled(&self) -> Result<bool> {
+        todo!("implement is_default_identity_enrolled")
+    }
+
+    /// Return true if there is an identity with that name and it is the default one
+    pub async fn is_default_identity_by_name(&self, name: &str) -> Result<bool> {
+        todo!("implement is_default_identity_by_name")
+    }
+
+    pub async fn get_identity_enrollments(
+        &self,
+        enrollment_status: EnrollmentStatus,
+    ) -> Result<Vec<IdentityEnrollment>> {
+        todo!("implement is_default_identity_enrolled")
+    }
+
+    /// Return the name of the default identity
+    pub async fn get_default_identity_name(&self) -> Result<String> {
+        todo!("implement the retrieval of a default identity name")
+        // self
+        //     .identities
+        //     .default()
+        //     .map(|i| i.name().to_string())
+        //     .unwrap_or_else(|_| "default".to_string())
+    }
+
+    /// Return the name of the default identity
+    pub async fn get_identity_name_or_default(&self, name: &Option<String>) -> Result<String> {
+        todo!("implement the retrieval of a default identity name")
+        // self
+        //     .identities
+        //     .default()
+        //     .map(|i| i.name().to_string())
+        //     .unwrap_or_else(|_| "default".to_string())
+    }
+
+    /// Return the name of the default identity
+    pub async fn set_as_default_identity(&self, name: &str) -> Result<()> {
+        todo!("implement set_at_default_identity")
+        // self
+        //     .identities
+        //     .default()
+        //     .map(|i| i.name().to_string())
+        //     .unwrap_or_else(|_| "default".to_string())
+    }
+
+    /// Return an identity by name
+    pub async fn get_identity_by_name(&self, name: Option<&str>) -> Result<Identity> {
+        todo!("implement the retrieval of a default identity name")
+        // self
+        //     .identities
+        //     .default()
+        //     .map(|i| i.name().to_string())
+        //     .unwrap_or_else(|_| "default".to_string())
+    }
+
+    /// Delete an identity by name
+    pub async fn delete_identity_by_name(&self, name: &str) -> Result<()> {
+        todo!("implement the retrieval of a default identity name")
+        // self
+        //     .identities
+        //     .default()
+        //     .map(|i| i.name().to_string())
+        //     .unwrap_or_else(|_| "default".to_string())
+    }
+
+    /// fault identity but if it has not been initialized yet
+    // /// then initialize it
+    // pub async fn initialize_identity_if_default(opts: &CommandGlobalOpts, name: &Option<String>) {
+    //     let name = get_identity_name(&opts.state, name).await?;
+    //     if name == "default" && opts.state.identities.default().is_err() {
+    //         create_default_identity(opts);
+    //     }
+    // }
+    //
+    // /// Return the name if identity_name is Some otherwise return the name of the default identity
+    // pub async fn get_identity_name(
+    //     cli_state: &CliState,
+    //     identity_name: &Option<String>,
+    // ) -> Result<String> {
+    //     Ok(identity_name
+    //         .clone()
+    //         .unwrap_or_else(|| async { cli_state.get_default_identity_name().await? }))
+    // }
+    //
+    // /// Create the default identity
+    // fn create_default_identity(opts: &CommandGlobalOpts) {
+    //     let default = "default";
+    //     let create_command = CreateCommand::new(default.into(), None);
+    //     create_command.run(opts.clone().set_quiet());
+    //
+    //     // Retrieve the identifier if available
+    //     // Otherwise, use the name of the identity
+    //     let identifier = match opts.state.identities.get(default) {
+    //         Ok(i) => i.identifier().to_string(),
+    //         Err(_) => default.to_string(),
+    //     };
+    //
+    //     if let Ok(mut logs) = PARSER_LOGS.lock() {
+    //         logs.push(fmt_log!(
+    //             "There is no identity, on this machine, marked as your default."
+    //         ));
+    //         logs.push(fmt_log!("Creating a new Ockam identity for you..."));
+    //         logs.push(fmt_ok!(
+    //             "Created: {}",
+    //             identifier.color(OckamColor::PrimaryResource.color())
+    //         ));
+    //         logs.push(fmt_log!(
+    //             "Marked this new identity as your default, on this machine.\n"
+    //         ));
+    //     }
+    // }
 
     /// Reset all directories and return a new CliState
     pub async fn reset(&self) -> Result<CliState> {
@@ -169,31 +358,12 @@ impl CliState {
 
         // Reset state
         Self::delete_at(&dir)?;
-        Self::initialize()
-    }
+        let state = Self::initialize()?;
 
-    fn migrate(&self) -> Result<()> {
-        // If there is a `config.json` file, migrate its contents to the spaces and project states.
-        let legacy_config_path = self.dir.join("config.json");
-        if legacy_config_path.exists() {
-            let contents = std::fs::read_to_string(&legacy_config_path)?;
-            let legacy_config: LegacyCliConfig = serde_json::from_str(&contents)?;
-            let spaces = self.spaces.list()?;
-            for (name, lookup) in legacy_config.lookup.spaces() {
-                if !spaces.iter().any(|s| s.name() == name) {
-                    let config = SpaceConfig::from_lookup(&name, lookup);
-                    self.spaces.create(name, config)?;
-                }
-            }
-            let projects = self.projects.list()?;
-            for (name, lookup) in legacy_config.lookup.projects() {
-                if !projects.iter().any(|p| p.name() == name) {
-                    self.projects.create(name, lookup.into())?;
-                }
-            }
-            std::fs::remove_file(legacy_config_path)?;
-        }
-        Ok(())
+        let dir = &state.dir;
+        let backup_dir = CliState::backup_default_dir().unwrap();
+        eprintln!("The {dir:?} directory has been reset and has been backed up to {backup_dir:?}");
+        Ok(state)
     }
 
     pub fn delete_at(root_path: &PathBuf) -> Result<()> {
@@ -208,7 +378,6 @@ impl CliState {
         // Delete all other state directories
         for dir in &[
             nodes_state.dir(),
-            IdentitiesState::new(root_path).dir(),
             VaultsState::new(root_path).dir(),
             SpacesState::new(root_path).dir(),
             ProjectsState::new(root_path).dir(),
@@ -239,22 +408,8 @@ impl CliState {
         Self::delete_at(&Self::default_dir()?)
     }
 
-    pub fn delete_identity(&self, identity_state: IdentityState) -> Result<()> {
-        // Abort if identity is being used by some running node.
-        for node in self.nodes.list()? {
-            if node.config().identity_config()?.identifier() == identity_state.identifier() {
-                return Err(CliStateError::InvalidOperation(format!(
-                    "Can't delete identity '{}' as it's being used by node '{}'",
-                    &identity_state.name(),
-                    &node.name()
-                )));
-            }
-        }
-        identity_state.delete()
-    }
-
     /// Returns the default directory for the CLI state.
-    pub fn default_dir() -> Result<PathBuf> {
+    fn default_dir() -> Result<PathBuf> {
         Ok(get_env_with_default::<PathBuf>(
             "OCKAM_HOME",
             home::home_dir()
@@ -264,7 +419,7 @@ impl CliState {
     }
 
     /// Returns the default backup directory for the CLI state.
-    pub fn backup_default_dir() -> Result<PathBuf> {
+    fn backup_default_dir() -> Result<PathBuf> {
         let dir = Self::default_dir()?;
         let dir_name =
             dir.file_name()
@@ -301,48 +456,11 @@ impl CliState {
         Ok(vault_state)
     }
 
-    pub async fn create_identity_state(
-        &self,
-        identifier: &Identifier,
-        identity_name: Option<&str>,
-    ) -> Result<IdentityState> {
-        if let Ok(identity) = self.identities.get_or_default(identity_name) {
-            Ok(identity)
-        } else {
-            self.make_identity_state(identifier, identity_name).await
-        }
-    }
-
-    async fn make_identity_state(
-        &self,
-        identifier: &Identifier,
-        name: Option<&str>,
-    ) -> Result<IdentityState> {
-        let identity_config = IdentityConfig::new(identifier).await;
-        let identity_name = name.map(|x| x.to_string()).unwrap_or_else(random_name);
-        self.identities.create(identity_name, identity_config)
-    }
-
-    pub async fn get_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
-        Ok(Identities::builder()
-            .with_vault(vault)
-            .with_identities_repository(self.identities.identities_repository().await?)
-            .build())
-    }
-
-    pub async fn default_identities(&self) -> Result<Arc<Identities>> {
-        Ok(Identities::builder()
-            .with_vault(self.vaults.default()?.vault().await?)
-            .with_identities_repository(self.identities.identities_repository().await?)
-            .build())
-    }
-
     /// Return true if the user is enrolled.
     /// At the moment this check only verifies that there is a default project.
     /// This project should be the project that is created at the end of the enrollment procedure
-    pub fn is_enrolled(&self) -> Result<bool> {
-        let identity_state = self.identities.default()?;
-        if !identity_state.is_enrolled() {
+    pub async fn is_enrolled(&self) -> Result<bool> {
+        if !self.is_default_identity_enrolled().await? {
             return Ok(false);
         }
 
@@ -366,6 +484,64 @@ impl CliState {
     }
 }
 
+pub enum EnrollmentStatus {
+    Enrolled,
+    Any,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct IdentityEnrollment {
+    identifier: Identifier,
+    name: Option<String>,
+    enrolled_at: Option<Enrollment>,
+}
+
+impl IdentityEnrollment {
+    pub fn identifier(&self) -> Identifier {
+        self.identifier.clone()
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct Enrollment {
+    enrolled: bool,
+    enrolled_at: SystemTime,
+}
+
+pub struct NamedIdentity {
+    name: String,
+    identity: Identity,
+    is_default: bool,
+}
+
+impl NamedIdentity {
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn identifier(&self) -> Identifier {
+        self.identity.identifier().clone()
+    }
+
+    pub fn is_default(&self) -> bool {
+        self.is_default
+    }
+}
+
+pub struct NodeInfo {
+    name: String,
+    identifier: Identifier,
+}
+
+impl NodeInfo {
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+    pub fn identifier(&self) -> Identifier {
+        self.identifier.clone()
+    }
+}
+
 /// Test support
 impl CliState {
     #[cfg(test)]
@@ -374,7 +550,6 @@ impl CliState {
         std::fs::create_dir_all(dir.join("defaults"))?;
         let state = Self {
             vaults: VaultsState::init(dir).await?,
-            identities: IdentitiesState::init(dir).await?,
             nodes: NodesState::init(dir).await?,
             spaces: SpacesState::init(dir).await?,
             projects: ProjectsState::init(dir).await?,
@@ -383,7 +558,6 @@ impl CliState {
             users_info: UsersInfoState::init(dir).await?,
             dir: dir.to_path_buf(),
         };
-        state.migrate()?;
         Ok(state)
     }
 
@@ -392,7 +566,6 @@ impl CliState {
         std::fs::create_dir_all(dir.join("defaults"))?;
         Ok(Self {
             vaults: VaultsState::load(dir)?,
-            identities: IdentitiesState::load(dir)?,
             nodes: NodesState::load(dir)?,
             spaces: SpacesState::load(dir)?,
             projects: ProjectsState::load(dir)?,
@@ -433,118 +606,12 @@ fn file_stem(path: &Path) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use ockam_core::compat::rand::random_string;
+
     use crate::cloud::enroll::auth0::UserInfo;
     use crate::config::cli::TrustContextConfig;
-    use crate::config::lookup::{ConfigLookup, LookupValue, ProjectLookup, SpaceLookup};
-    use ockam_core::compat::rand::random_string;
-    use ockam_multiaddr::MultiAddr;
-    use std::str::FromStr;
 
-    #[tokio::test]
-    async fn test_create_default_identity_state() {
-        let state = CliState::test().unwrap();
-        let identifier = "Ie92f183eb4c324804ef4d62962dea94cf095a265"
-            .try_into()
-            .unwrap();
-        let identity1 = state
-            .create_identity_state(&identifier, None)
-            .await
-            .unwrap();
-        let identity2 = state
-            .create_identity_state(&identifier, None)
-            .await
-            .unwrap();
-
-        let default_identity = state.identities.default().unwrap();
-        assert_eq!(identity1, default_identity);
-
-        // make sure that a default identity is not recreated twice
-        assert_eq!(identity1.name(), identity2.name());
-        assert_eq!(identity1.path(), identity2.path());
-    }
-
-    #[tokio::test]
-    async fn test_create_named_identity_state() {
-        let state = CliState::test().unwrap();
-        let alice = "Ie92f183eb4c324804ef4d62962dea94cf095a265"
-            .try_into()
-            .unwrap();
-        let identity1 = state
-            .create_identity_state(&alice, Some("alice"))
-            .await
-            .unwrap();
-        let identity2 = state
-            .create_identity_state(&alice, Some("alice"))
-            .await
-            .unwrap();
-
-        assert_eq!(identity1.name(), "alice");
-        assert!(identity1
-            .path()
-            .to_string_lossy()
-            .to_string()
-            .contains("alice.json"));
-
-        // make sure that a named identity is not recreated twice
-        assert_eq!(identity1.name(), identity2.name());
-        assert_eq!(identity1.path(), identity2.path());
-    }
-
-    #[tokio::test]
-    async fn migrate_legacy_cli_config() {
-        // Before this migration, there was a `config.json` file in the root $OCKAM_HOME directory
-        // that contained a map of space names to space and project lookups. This test ensures that
-        // the migration correctly moves the space and project lookups into the new `spaces` and
-        // `projects` directories, respectively.
-        let space_name = "sname";
-        let space_lookup = SpaceLookup {
-            id: "sid".to_string(),
-        };
-        let project_lookup = ProjectLookup {
-            node_route: Some(MultiAddr::from_str("/node/p").unwrap()),
-            id: "pid".to_string(),
-            name: "pname".to_string(),
-            identity_id: Some(
-                Identifier::from_str("Ibb37445cacb3ca7a20040a9b36469e321a57d2cd").unwrap(),
-            ),
-            authority: None,
-            okta: None,
-        };
-        let test_dir = CliState::test_dir().unwrap();
-        let legacy_config = {
-            let map = vec![
-                (space_name.to_string(), LookupValue::Space(space_lookup)),
-                (
-                    project_lookup.name.clone(),
-                    LookupValue::Project(project_lookup.clone()),
-                ),
-            ];
-            let lookup = ConfigLookup {
-                map: map.into_iter().collect(),
-            };
-            LegacyCliConfig {
-                dir: Some(test_dir.clone()),
-                lookup,
-            }
-        };
-        std::fs::create_dir_all(&test_dir).unwrap();
-        std::fs::write(
-            test_dir.join("config.json"),
-            serde_json::to_string(&legacy_config).unwrap(),
-        )
-        .unwrap();
-        let state = CliState::initialize_at(&test_dir).await.unwrap();
-        let space = state.spaces.get(space_name).unwrap();
-        assert_eq!(space.config().id, "sid");
-        let project = state.projects.get(&project_lookup.name).unwrap();
-        assert_eq!(project.config().id, project_lookup.id);
-        assert_eq!(
-            project.config().access_route,
-            project_lookup.node_route.unwrap().to_string()
-        );
-        assert!(!test_dir.join("config.json").exists());
-    }
+    use super::*;
 
     #[ockam_macros::test(crate = "ockam")]
     async fn integration(ctx: &mut ockam::Context) -> ockam::Result<()> {
@@ -560,32 +627,6 @@ mod tests {
             assert_eq!(got, state);
 
             let got = sut.vaults.default().unwrap();
-            assert_eq!(got, state);
-
-            name
-        };
-
-        // Identities
-        let identity_name = {
-            let name = random_name();
-            let vault_state = sut.vaults.get(&vault_name).unwrap();
-            let vault: Vault = vault_state.get().await.unwrap();
-            let identities = Identities::builder()
-                .with_vault(vault)
-                .with_identities_repository(sut.identities.identities_repository().await?)
-                .build();
-            let identity = identities
-                .identities_creation()
-                .create_identity()
-                .await
-                .unwrap();
-            let config = IdentityConfig::new(identity.identifier()).await;
-
-            let state = sut.identities.create(&name, config).unwrap();
-            let got = sut.identities.get(&name).unwrap();
-            assert_eq!(got, state);
-
-            let got = sut.identities.default().unwrap();
             assert_eq!(got, state);
 
             name
@@ -667,9 +708,6 @@ mod tests {
             format!("vaults/{vault_name}.json"),
             "vaults/data".to_string(),
             format!("vaults/data/{vault_name}-storage.json"),
-            "identities".to_string(),
-            format!("identities/{identity_name}.json"),
-            "identities/data/authenticated_storage.lmdb".to_string(),
             "nodes".to_string(),
             format!("nodes/{node_name}"),
             "spaces".to_string(),
@@ -719,30 +757,6 @@ mod tests {
                         }
                     });
                 }
-                "identities" => {
-                    assert!(entry.path().is_dir());
-                    found_entries.push(dir_name.clone());
-                    entry.path().read_dir().unwrap().for_each(|entry| {
-                        let entry = entry.unwrap();
-                        let entry_name = entry.file_name().into_string().unwrap();
-                        if entry.path().is_dir() {
-                            assert_eq!(entry_name, DATA_DIR_NAME);
-                            entry.path().read_dir().unwrap().for_each(|entry| {
-                                let entry = entry.unwrap();
-                                let file_name = entry.file_name().into_string().unwrap();
-                                if !file_name.ends_with("-lock") {
-                                    found_entries
-                                        .push(format!("{dir_name}/{entry_name}/{file_name}"));
-                                    assert_eq!(file_name, format!("authenticated_storage.lmdb"));
-                                }
-                            })
-                        } else {
-                            assert!(entry.path().is_file());
-                            let file_name = entry.file_name().into_string().unwrap();
-                            found_entries.push(format!("{dir_name}/{file_name}"));
-                        }
-                    });
-                }
                 "nodes" => {
                     assert!(entry.path().is_dir());
                     found_entries.push(dir_name.clone());
@@ -772,7 +786,6 @@ mod tests {
         sut.spaces.delete(&space_name).unwrap();
         sut.projects.delete(&project_name).unwrap();
         sut.nodes.delete(&node_name).unwrap();
-        sut.identities.delete(&identity_name).unwrap();
         sut.vaults.delete(&vault_name).unwrap();
 
         ctx.stop().await?;

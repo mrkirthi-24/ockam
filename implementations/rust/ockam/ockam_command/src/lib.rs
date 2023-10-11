@@ -244,11 +244,6 @@ impl CommandGlobalOpts {
             let state = CliState::backup_and_reset().expect(
                 "Failed to initialize CliState. Try to manually remove the '~/.ockam' directory",
             );
-            let dir = &state.dir;
-            let backup_dir = CliState::backup_default_dir().unwrap();
-            eprintln!(
-                "The {dir:?} directory has been reset and has been backed up to {backup_dir:?}"
-            );
             state
         });
         let terminal = Terminal::new(

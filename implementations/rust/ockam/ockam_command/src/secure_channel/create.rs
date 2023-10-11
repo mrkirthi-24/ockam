@@ -16,8 +16,6 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::docs;
-use crate::identity::{get_identity_name, initialize_identity_if_default};
-
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
@@ -65,7 +63,6 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(rpc, (opts, self));
     }
 
@@ -80,8 +77,10 @@ impl CreateCommand {
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .into_diagnostic()
             .wrap_err(format!("Could not convert {} into route", &self.to))?;
-
-        let identity_name = get_identity_name(&opts.state, &self.cloud_opts.identity);
+        let identity_name = opts
+            .state
+            .get_identity_name_or_default(&self.cloud_opts.identity)
+            .await?;
 
         let projects_sc = get_projects_secure_channels_from_config_lookup(
             opts,
@@ -116,7 +115,10 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
     let authorized_identifiers = cmd.authorized.clone();
 
     let create_secure_channel = async {
-        let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+        let identity_name = opts
+            .state
+            .get_identity_name_or_default(&cmd.cloud_opts.identity)
+            .await?;
         let payload = CreateSecureChannelRequest::new(
             &to,
             authorized_identifiers,

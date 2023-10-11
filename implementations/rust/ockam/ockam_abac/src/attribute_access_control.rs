@@ -21,7 +21,7 @@ use ockam_identity::{Identifier, IdentitiesRepository, IdentitySecureChannelLoca
 /// This AccessControl uses a storage for authenticated attributes in order
 /// to verify if a policy expression is valid
 /// A similar access control policy is available as [`crate::policy::PolicyAccessControl`] where
-/// as [`crate::PolicyStorage`] can be used to retrieve a specific policy for a given resource and action
+/// as [`crate::PoliciesRepository`] can be used to retrieve a specific policy for a given resource and action
 pub struct AbacAccessControl {
     repository: Arc<dyn IdentitiesRepository>,
     expression: Expr,

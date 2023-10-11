@@ -128,7 +128,7 @@ impl Project {
 
 #[derive(Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
 #[cbor(map)]
-pub struct ProjectVersion {
+pub struct OrchestratorVersionInfo {
     /// The version of the Orchestrator Controller
     #[cbor(n(1))]
     pub version: Option<String>,
@@ -136,6 +136,16 @@ pub struct ProjectVersion {
     /// The version of the Projects
     #[cbor(n(2))]
     pub project_version: Option<String>,
+}
+
+impl OrchestratorVersionInfo {
+    pub fn version(&self) -> String {
+        self.version.clone().unwrap_or("N/A".to_string())
+    }
+
+    pub fn project_version(&self) -> String {
+        self.project_version.clone().unwrap_or("N/A".to_string())
+    }
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -258,7 +268,10 @@ pub trait Projects {
         project_id: String,
     ) -> miette::Result<()>;
 
-    async fn get_project_version(&self, ctx: &Context) -> miette::Result<ProjectVersion>;
+    async fn get_orchestrator_version_info(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<OrchestratorVersionInfo>;
 
     async fn list_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>>;
 
@@ -316,8 +329,11 @@ impl Projects for Controller {
             .into_diagnostic()
     }
 
-    async fn get_project_version(&self, ctx: &Context) -> miette::Result<ProjectVersion> {
-        trace!(target: TARGET, "getting project version");
+    async fn get_orchestrator_version_info(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<OrchestratorVersionInfo> {
+        trace!(target: TARGET, "getting orchestrator version information");
         self.0
             .ask(ctx, "version_info", Request::get(""))
             .await

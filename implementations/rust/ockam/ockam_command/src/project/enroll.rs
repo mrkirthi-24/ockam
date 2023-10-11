@@ -15,7 +15,6 @@ use ockam_api::identity::EnrollmentTicket;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::enroll::OidcServiceExt;
-use crate::identity::{get_identity_name, initialize_identity_if_default};
 
 use crate::output::CredentialAndPurposeKeyDisplay;
 use crate::util::api::{CloudOpts, TrustContextOpts};
@@ -69,7 +68,6 @@ pub fn parse_enroll_ticket(hex_encoded_data_or_path: &str) -> Result<EnrollmentT
 
 impl EnrollCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_identity_if_default(&opts, &self.cloud_opts.identity);
         node_rpc(run_impl, (opts, self));
     }
 }
@@ -93,7 +91,10 @@ pub async fn project_enroll(
         .await
         .into_diagnostic()?
         .ok_or_else(|| miette!("Authority details not configured"))?;
-    let identity_name = get_identity_name(&opts.state, &cmd.cloud_opts.identity);
+    let identity_name = opts
+        .state
+        .get_identity_name_or_default(&cmd.cloud_opts.identity)
+        .await?;
 
     // Create secure channel to the project's authority node
     let trust_context_config = cmd.trust_opts.to_config(&opts.state)?.build();

@@ -272,28 +272,10 @@ async fn start_authority_node(
 
     // Retrieve the authority identity if it has been created before
     // otherwise create a new one
-    let identifier = match &cmd.identity {
-        Some(identity_name) => {
-            debug!(name=%identity_name, "getting identity from state");
-            opts.state
-                .identities
-                .get(identity_name)
-                .context("Identity not found")?
-                .config()
-                .identifier()
-        }
-        None => {
-            debug!("getting default identity from state");
-            match opts.state.identities.default() {
-                Ok(state) => state.config().identifier(),
-                Err(_) => {
-                    debug!("creating default identity");
-                    let cmd = identity::CreateCommand::new("authority".into(), None);
-                    cmd.create_identity(opts.clone()).await?
-                }
-            }
-        }
-    };
+    let identifier = opts
+        .state
+        .get_identifier_by_optional_name_or_create_identity(&cmd.identity)
+        .await?;
     debug!(identifier=%identifier, "authority identifier");
 
     let okta_configuration = match (&cmd.tenant_base_url, &cmd.certificate, &cmd.attributes) {
@@ -332,7 +314,7 @@ async fn start_authority_node(
 
     let configuration = authority_node::Configuration {
         identifier,
-        storage_path: opts.state.identities.identities_repository_path()?,
+        storage_path: opts.state.database_path(),
         vault_path: opts.state.vaults.default()?.vault_file_path().clone(),
         project_identifier: cmd.project_identifier,
         tcp_listener_address: cmd.tcp_listener_address,

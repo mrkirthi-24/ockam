@@ -103,7 +103,7 @@ impl CommonStateMachine {
         let change_history = self
             .identities
             .repository()
-            .get_identity(&self.identifier)
+            .get_change_history(&self.identifier)
             .await?;
         let payload = IdentityAndCredentials {
             change_history,

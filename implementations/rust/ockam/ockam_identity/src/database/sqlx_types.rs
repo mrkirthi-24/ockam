@@ -1,6 +1,7 @@
 use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
 use sqlx::{Database, Encode, Sqlite, Type};
+use std::net::SocketAddr;
 
 /// This enum represents the set of types that we currently support in our database
 /// Since we support only Sqlite at the moment, those types are close to what is supported by Sqlite:
@@ -13,8 +14,11 @@ use sqlx::{Database, Encode, Sqlite, Type};
 /// Note: see the `ToSqlxType` trait and its instances for how the conversion is done
 ///
 pub enum SqlxType {
+    /// This type represents text in the database
     Text(String),
+    /// This type arbitrary bytes in the database
     Blob(Vec<u8>),
+    /// This type arbitrary bytes in the database
     Integer(i64),
     #[allow(unused)]
     Real(f64),
@@ -74,6 +78,12 @@ impl ToSqlxType for String {
     }
 }
 
+impl ToSqlxType for &str {
+    fn to_sql(&self) -> SqlxType {
+        self.to_string().to_sql()
+    }
+}
+
 impl ToSqlxType for u64 {
     fn to_sql(&self) -> SqlxType {
         SqlxType::Integer(*self as i64)
@@ -83,5 +93,11 @@ impl ToSqlxType for u64 {
 impl ToSqlxType for Vec<u8> {
     fn to_sql(&self) -> SqlxType {
         SqlxType::Blob(self.clone())
+    }
+}
+
+impl ToSqlxType for SocketAddr {
+    fn to_sql(&self) -> SqlxType {
+        SqlxType::Text(self.to_string())
     }
 }

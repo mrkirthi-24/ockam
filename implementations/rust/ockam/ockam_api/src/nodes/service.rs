@@ -9,7 +9,6 @@ use std::time::Duration;
 
 use minicbor::{Decoder, Encode};
 
-pub use node_identities::*;
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::CredentialsServerModule;
 use ockam::identity::TrustContext;
@@ -22,9 +21,10 @@ use ockam::{
     Address, Context, RelayService, RelayServiceOptions, Result, Routed, TcpTransport, Worker,
 };
 use ockam_abac::expr::{eq, ident, str};
-use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
+use ockam_abac::{Action, Env, Expr, PoliciesRepository, PolicyAccessControl, Resource};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::{string::String, sync::Arc};
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
@@ -56,7 +56,6 @@ pub(crate) mod credentials;
 mod flow_controls;
 pub(crate) mod in_memory_node;
 pub mod message;
-mod node_identities;
 mod node_services;
 mod policy;
 mod portals;
@@ -96,16 +95,29 @@ pub struct NodeManager {
     api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
     enable_credential_checks: bool,
-    identifier: Identifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
     trust_context: Option<TrustContext>,
     pub(crate) registry: Registry,
-    policies: Arc<dyn PolicyStorage>,
+    policies_repository: Arc<dyn PoliciesRepository>,
 }
 
 impl NodeManager {
-    pub(super) fn identifier(&self) -> &Identifier {
-        &self.identifier
+    pub(super) async fn identifier(&self) -> Result<Identifier> {
+        Ok(self
+            .cli_state
+            .get_node_identifier(self.node_name.as_str())
+            .await?)
+    }
+
+    pub async fn get_identifier_by_name(
+        &self,
+        identity_name: Option<String>,
+    ) -> Result<Identifier> {
+        if let Some(name) = identity_name {
+            Ok(self.cli_state.get_identifier_by_name(name.as_ref()).await?)
+        } else {
+            Ok(self.identifier().await?.clone())
+        }
     }
 
     pub fn node_name(&self) -> String {
@@ -174,7 +186,7 @@ impl NodeManager {
             authority_identifier,
             authority_multiaddr,
             &self
-                .get_identifier(caller_identity_name)
+                .get_identifier_by_name(caller_identity_name)
                 .await
                 .into_diagnostic()?,
         )
@@ -192,7 +204,7 @@ impl NodeManager {
             project_identifier,
             project_multiaddr,
             &self
-                .get_identifier(caller_identity_name)
+                .get_identifier_by_name(caller_identity_name)
                 .await
                 .into_diagnostic()?,
         )
@@ -240,7 +252,7 @@ impl NodeManager {
 
             // Check if a policy exists for (resource, action) and if not, then
             // create or use a default entry:
-            if self.policies.get_policy(r, a).await?.is_none() {
+            if self.policies_repository.get_policy(r, a).await?.is_none() {
                 let fallback = match custom_default {
                     Some(e) => e.clone(),
                     None => eq([
@@ -248,9 +260,9 @@ impl NodeManager {
                         ident("subject.trust_context_id"),
                     ]),
                 };
-                self.policies.set_policy(r, a, &fallback).await?
+                self.policies_repository.set_policy(r, a, &fallback).await?
             }
-            let policies = self.policies.clone();
+            let policies = self.policies_repository.clone();
             Ok(Arc::new(PolicyAccessControl::new(
                 policies,
                 self.identities_repository(),
@@ -356,28 +368,29 @@ impl NodeManager {
         let cli_state = general_options.cli_state;
         let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
-        let repository: Arc<dyn IdentitiesRepository> =
-            cli_state.identities.identities_repository().await?;
+        let identities_repository: Arc<dyn IdentitiesRepository> =
+            cli_state.identities_repository().await?;
+        let policies_repository: Arc<dyn PoliciesRepository> =
+            cli_state.policies_repository().await?;
 
         //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
         //trait instead),  or pass it from the general_options always.
         let vault: Vault = node_state.config().vault().await?;
-        let identities_repository: Arc<dyn IdentitiesRepository> =
-            Arc::new(match general_options.pre_trusted_identities {
-                None => BootstrapedIdentityStore::new(
-                    Arc::new(PreTrustedIdentities::new_from_string("{}")?),
-                    repository.clone(),
-                ),
-                Some(f) => BootstrapedIdentityStore::new(Arc::new(f), repository.clone()),
-            });
+        let identities_repository: Arc<dyn IdentitiesRepository> = Arc::new(match general_options
+            .pre_trusted_identities
+        {
+            None => BootstrapedIdentityStore::new(
+                Arc::new(PreTrustedIdentities::new_from_string("{}")?),
+                identities_repository.clone(),
+            ),
+            Some(f) => BootstrapedIdentityStore::new(Arc::new(f), identities_repository.clone()),
+        });
 
         debug!("create the secure channels service");
         let secure_channels = SecureChannels::builder()
             .with_vault(vault)
             .with_identities_repository(identities_repository.clone())
             .build();
-
-        let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
 
         let mut s = Self {
             cli_state,
@@ -391,11 +404,10 @@ impl NodeManager {
                     .unwrap()
                     .authority()
                     .is_ok(),
-            identifier: node_state.config().identifier()?,
             secure_channels,
             trust_context: None,
             registry: Default::default(),
-            policies,
+            policies_repository,
         };
 
         if let Some(tc) = trust_options.trust_context_config {
@@ -500,7 +512,7 @@ impl NodeManager {
     ) -> Result<Connection> {
         let identifier = match identifier {
             Some(identifier) => identifier,
-            None => self.get_identifier(None).await?,
+            None => self.get_identifier_by_name(None).await?,
         };
         let authorized = authorized.map(|authorized| vec![authorized]);
         self.connect(ctx, addr, identifier, authorized, credential, timeout)

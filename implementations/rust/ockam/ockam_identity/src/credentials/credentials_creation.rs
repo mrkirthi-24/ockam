@@ -54,7 +54,10 @@ impl CredentialsCreation {
             .get_or_create_credential_purpose_key(issuer)
             .await?;
 
-        let subject_change_history = self.identities_repository.get_identity(subject).await?;
+        let subject_change_history = self
+            .identities_repository
+            .get_change_history(subject)
+            .await?;
         let subject_identity = Identity::import_from_change_history(
             Some(subject),
             subject_change_history,

@@ -4,7 +4,6 @@ use termimad::{minimad::TextTemplate, MadSkin};
 use ockam::Context;
 use ockam_api::InfluxDbTokenLease;
 
-use crate::identity::initialize_identity_if_default;
 use crate::lease::authenticate;
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::util::node_rpc;
@@ -25,7 +24,6 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, opts: CommandGlobalOpts, cloud_opts: CloudOpts, trust_opts: TrustContextOpts) {
-        initialize_identity_if_default(&opts, &cloud_opts.identity);
         node_rpc(run_impl, (opts, cloud_opts, self, trust_opts));
     }
 }

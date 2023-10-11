@@ -8,9 +8,6 @@ use tauri::async_runtime::{block_on, spawn, RwLock};
 use tauri::{AppHandle, Manager, Runtime};
 use tracing::{error, info, trace, warn};
 
-pub(crate) use crate::app::state::model::ModelState;
-pub(crate) use crate::app::state::repository::{LmdbModelStateRepository, ModelStateRepository};
-use crate::background_node::{BackgroundNodeClient, Cli};
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
 use ockam_api::cli_state::{
@@ -28,6 +25,9 @@ use ockam_api::nodes::{InMemoryNode, NodeManager};
 use ockam_api::trust_context::TrustContextConfigBuilder;
 use ockam_multiaddr::MultiAddr;
 
+pub(crate) use crate::app::state::model::ModelState;
+pub(crate) use crate::app::state::repository::{ModelStateRepository, ModelStateSqlxDatabase};
+use crate::background_node::{BackgroundNodeClient, Cli};
 use crate::Result;
 
 mod model;
@@ -113,24 +113,6 @@ impl AppState {
             let mut writer = self.event_manager.write().unwrap();
             writer.events.clear();
         }
-
-        // recreate the model state repository since the cli state has changed
-        {
-            let mut writer = self.model_state.write().await;
-            *writer = ModelState::default();
-        }
-        let identity_path = self
-            .state()
-            .await
-            .identities
-            .identities_repository_path()
-            .expect("Failed to get the identities repository path");
-        let new_state_repository = LmdbModelStateRepository::new(identity_path).await?;
-        {
-            let mut writer = self.model_state_repository.write().await;
-            *writer = Arc::new(new_state_repository);
-        }
-
         Ok(())
     }
 
@@ -190,7 +172,7 @@ impl AppState {
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {
-        self.state().await.is_enrolled().map_err(|e| {
+        self.state().await.is_enrolled().await.map_err(|e| {
             warn!(%e, "Failed to check if user is enrolled");
             e.into()
         })
@@ -331,17 +313,16 @@ pub(crate) async fn make_node_manager(
 
 /// Create the repository containing the model state
 fn create_model_state_repository(state: &CliState) -> Arc<dyn ModelStateRepository> {
-    let identity_path = state
-        .identities
-        .identities_repository_path()
-        .expect("Failed to get the identities repository path");
-    match block_on(async move { LmdbModelStateRepository::new(identity_path).await }) {
-        Ok(model_state_repository) => Arc::new(model_state_repository),
-        Err(e) => {
-            error!(%e, "Cannot create a model state repository manager");
-            panic!("Cannot create a model state repository manager: {e:?}");
-        }
-    }
+    block_on(async move {
+        let database = match state.database().await {
+            Ok(database) => database,
+            Err(e) => {
+                error!(%e, "Cannot create a model state database");
+                panic!("Cannot create a model state database: {e:?}");
+            }
+        };
+        Arc::new(ModelStateSqlxDatabase::create(database))
+    })
 }
 
 /// Load a previously persisted ModelState
@@ -359,7 +340,6 @@ fn load_model_state(
     block_on(async {
         match model_state_repository.load().await {
             Ok(model_state) => {
-                let model_state = model_state.unwrap_or(ModelState::default());
                 crate::shared_service::tcp_outlet::load_model_state(
                     context.clone(),
                     node_manager.clone(),
@@ -379,6 +359,7 @@ fn load_model_state(
 
 pub type EventName = String;
 type IsProcessing = AtomicBool;
+
 struct Event {
     name: EventName,
     is_processing: IsProcessing,

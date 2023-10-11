@@ -114,7 +114,10 @@ impl PurposeKeyCreation {
         created_at: TimestampInSeconds,
         expires_at: TimestampInSeconds,
     ) -> Result<(PurposeKeyAttestation, PurposeKeyAttestationData)> {
-        let identity_change_history = self.identities_reader.get_identity(&identifier).await?;
+        let identity_change_history = self
+            .identities_reader
+            .get_change_history(&identifier)
+            .await?;
         let identity = Identity::import_from_change_history(
             Some(&identifier),
             identity_change_history,

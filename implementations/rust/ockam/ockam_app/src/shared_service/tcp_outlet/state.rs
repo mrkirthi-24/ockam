@@ -26,7 +26,7 @@ pub(crate) async fn load_model_state(
     model_state: &ModelState,
     cli_state: &CliState,
 ) {
-    if !cli_state.is_enrolled().unwrap_or(false) {
+    if !cli_state.is_enrolled().await.unwrap_or(false) {
         return;
     }
     for tcp_outlet in model_state.get_tcp_outlets() {

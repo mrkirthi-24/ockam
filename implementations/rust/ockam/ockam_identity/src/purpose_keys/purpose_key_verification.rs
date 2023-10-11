@@ -56,7 +56,7 @@ impl PurposeKeyVerification {
 
         let change_history = self
             .identities_reader
-            .get_identity(&purpose_key_data.subject)
+            .get_change_history(&purpose_key_data.subject)
             .await?;
         let identity = Identity::import_from_change_history(
             Some(&purpose_key_data.subject),

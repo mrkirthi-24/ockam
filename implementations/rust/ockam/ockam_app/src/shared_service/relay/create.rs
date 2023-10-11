@@ -39,7 +39,7 @@ async fn create_relay_impl(
     node_manager: Arc<InMemoryNode>,
 ) -> Result<Option<RelayInfo>> {
     trace!("Creating relay");
-    if !cli_state.is_enrolled().unwrap_or(false) {
+    if !cli_state.is_enrolled().await.unwrap_or(false) {
         trace!("Not enrolled, skipping relay creation");
         return Ok(None);
     }

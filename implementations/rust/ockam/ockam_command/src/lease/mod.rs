@@ -16,8 +16,6 @@ use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::nodes::Credentials;
 use ockam_api::nodes::InMemoryNode;
 
-use crate::identity::get_identity_name;
-
 use crate::util::api::{CloudOpts, TrustContextOpts};
 use crate::CommandGlobalOpts;
 
@@ -79,7 +77,10 @@ async fn authenticate(
         trust_context_config,
     )
     .await?;
-    let identity = get_identity_name(&opts.state, &cloud_opts.identity);
+    let identity = opts
+        .state
+        .get_identity_name_or_default(&cloud_opts.identity)
+        .await?;
     let project_info = retrieve_project_info(opts, trust_opts).await?;
     let project_authority = project_info
         .authority

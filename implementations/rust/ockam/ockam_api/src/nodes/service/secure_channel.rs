@@ -29,7 +29,6 @@ use crate::nodes::models::secure_channel::{
     ShowSecureChannelResponse,
 };
 use crate::nodes::registry::{SecureChannelInfo, SecureChannelListenerInfo};
-use crate::nodes::service::NodeIdentities;
 use crate::nodes::{NodeManager, NodeManagerWorker};
 use crate::DefaultAddress;
 
@@ -260,7 +259,7 @@ impl NodeManager {
         credential_name: Option<String>,
         timeout: Option<Duration>,
     ) -> Result<SecureChannel> {
-        let identifier = self.get_identifier(identity_name.clone()).await?;
+        let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
         let credential = self
             .get_credential(ctx, &identifier, credential_name, timeout)
             .await?;
@@ -416,7 +415,7 @@ impl NodeManager {
         );
 
         let secure_channels = self.build_secure_channels(vault_name.clone()).await?;
-        let identifier = self.get_identifier(identity_name.clone()).await?;
+        let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
 
         let options =
             SecureChannelListenerOptions::new().as_consumer(&self.api_transport_flow_control_id);
@@ -497,29 +496,13 @@ impl NodeManager {
             return Ok(self.secure_channels.clone());
         }
         let vault = self.get_secure_channels_vault(vault_name.clone()).await?;
-        let identities = self.get_identities(vault_name).await?;
+        let identity_repository = self.cli_state.identities_repository().await?;
         let registry = self.secure_channels.secure_channel_registry();
         Ok(SecureChannels::builder()
             .with_vault(vault)
-            .with_identities(identities)
+            .with_identities_repository(identity_repository)
             .with_secure_channels_registry(registry)
             .build())
-    }
-
-    pub fn node_identities(&self) -> NodeIdentities {
-        NodeIdentities::new(self.identities(), self.cli_state.clone())
-    }
-
-    pub async fn get_identifier(&self, identity_name: Option<String>) -> Result<Identifier> {
-        if let Some(name) = identity_name {
-            self.node_identities().get_identifier(name.clone()).await
-        } else {
-            Ok(self.identifier().clone())
-        }
-    }
-
-    async fn get_identities(&self, vault_name: Option<String>) -> Result<Arc<Identities>> {
-        self.node_identities().get_identities(vault_name).await
     }
 
     async fn get_secure_channels_vault(&self, vault_name: Option<String>) -> Result<Vault> {

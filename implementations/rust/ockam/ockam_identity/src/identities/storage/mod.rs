@@ -1,6 +1,5 @@
 mod attributes_entry;
 mod identities_repository_impl;
-mod identities_repository_sqlx_impl;
 mod identities_repository_trait;
 
 pub use attributes_entry::*;

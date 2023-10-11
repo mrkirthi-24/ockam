@@ -20,7 +20,9 @@ impl NodeManager {
         let p: Policy = dec.decode()?;
         let r = Resource::new(resource);
         let a = Action::new(action);
-        self.policies.set_policy(&r, &a, p.expression()).await?;
+        self.policies_repository
+            .set_policy(&r, &a, p.expression())
+            .await?;
         Ok(Response::ok(req))
     }
 
@@ -32,7 +34,7 @@ impl NodeManager {
     ) -> Result<Either<Response<Error>, Response<Policy>>> {
         let r = Resource::new(resource);
         let a = Action::new(action);
-        if let Some(e) = self.policies.get_policy(&r, &a).await? {
+        if let Some(e) = self.policies_repository.get_policy(&r, &a).await? {
             Ok(Either::Right(Response::ok(req).body(Policy::new(e))))
         } else {
             Ok(Either::Left(Response::not_found(req, "policy not found")))
@@ -45,7 +47,10 @@ impl NodeManager {
         res: &str,
     ) -> Result<Response<PolicyList>, Response<Error>> {
         let r = Resource::new(res);
-        let p = self.policies.policies(&r).await?;
+        let p = self
+            .policies_repository
+            .get_policies_by_resource(&r)
+            .await?;
         let p = p.into_iter().map(|(a, e)| Expression::new(a, e)).collect();
         Ok(Response::ok(req).body(PolicyList::new(p)))
     }
@@ -58,7 +63,7 @@ impl NodeManager {
     ) -> Result<Response<()>, Response<Error>> {
         let r = Resource::new(res);
         let a = Action::new(act);
-        self.policies.del_policy(&r, &a).await?;
+        self.policies_repository.delete_policy(&r, &a).await?;
         Ok(Response::ok(req))
     }
 }

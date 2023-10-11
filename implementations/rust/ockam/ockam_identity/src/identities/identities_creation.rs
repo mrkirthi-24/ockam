@@ -88,9 +88,7 @@ impl IdentitiesCreation {
     /// Create an `Identity` and store it
     pub async fn create_identity_with_options(&self, options: IdentityOptions) -> Result<Identity> {
         let identity = self.identities_keys().create_initial_key(options).await?;
-        self.repository
-            .update_identity(identity.identifier(), identity.change_history())
-            .await?;
+        self.repository.create_identity(&identity, None).await?;
         Ok(identity)
     }
 
@@ -108,7 +106,7 @@ impl IdentitiesCreation {
         identifier: &Identifier,
         options: IdentityOptions,
     ) -> Result<()> {
-        let change_history = self.repository.get_identity(identifier).await?;
+        let change_history = self.repository.get_change_history(identifier).await?;
 
         let identity = Identity::import_from_change_history(
             Some(identifier),
@@ -122,9 +120,7 @@ impl IdentitiesCreation {
             .rotate_key_with_options(identity, options)
             .await?;
 
-        self.repository
-            .update_identity(identity.identifier(), identity.change_history())
-            .await?;
+        self.repository.update_identity(&identity).await?;
 
         Ok(())
     }
@@ -147,9 +143,7 @@ impl IdentitiesCreation {
             return Err(IdentityError::WrongSecretKey.into());
         }
 
-        self.repository
-            .update_identity(identity.identifier(), identity.change_history())
-            .await?;
+        self.repository.update_identity(&identity).await?;
         Ok(identity)
     }
 
@@ -173,7 +167,7 @@ impl IdentitiesCreation {
     pub async fn update_identity(&self, identity: &Identity) -> Result<()> {
         if let Some(known_identity) = self
             .repository
-            .retrieve_identity(identity.identifier())
+            .get_change_history_optional(identity.identifier())
             .await?
         {
             let known_identity = Identity::import_from_change_history(
@@ -188,16 +182,12 @@ impl IdentitiesCreation {
                     return Err(IdentityError::ConsistencyError.into());
                 }
                 IdentityHistoryComparison::Newer => {
-                    self.repository
-                        .update_identity(identity.identifier(), identity.change_history())
-                        .await?;
+                    self.repository.update_identity(&identity).await?;
                 }
                 IdentityHistoryComparison::Equal => {}
             }
         } else {
-            self.repository
-                .update_identity(identity.identifier(), identity.change_history())
-                .await?;
+            self.repository.update_identity(&identity).await?;
         }
 
         Ok(())

@@ -3,7 +3,6 @@ use ockam_core::compat::sync::Arc;
 use crate::identities::{Identities, IdentitiesRepository};
 use crate::secure_channel::SecureChannelRegistry;
 use crate::secure_channels::SecureChannels;
-use crate::storage::Storage;
 use crate::{IdentitiesBuilder, Vault, VaultStorage};
 
 /// This struct supports all the services related to secure channels
@@ -29,12 +28,6 @@ impl SecureChannelsBuilder {
     /// Set [`Vault`]
     pub fn with_vault(mut self, vault: Vault) -> Self {
         self.identities_builder = self.identities_builder.with_vault(vault);
-        self
-    }
-
-    /// Set a specific storage for the identities repository
-    pub fn with_identities_storage(mut self, storage: Arc<dyn Storage>) -> Self {
-        self.identities_builder = self.identities_builder.with_identities_storage(storage);
         self
     }
 

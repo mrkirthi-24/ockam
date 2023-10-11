@@ -11,7 +11,6 @@ use ockam_core::async_trait;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
-use crate::cli_state::traits::StateDirTrait;
 use crate::cloud::AuthorityNode;
 use crate::error::ApiError;
 use crate::local_multiaddr_to_route;
@@ -121,15 +120,10 @@ impl NodeManagerWorker {
     ) -> Result<Either<Response<Error>, Response<CredentialAndPurposeKey>>> {
         let request: GetCredentialRequest = dec.decode()?;
 
-        let identifier = if let Some(identity) = &request.identity_name {
-            self.node_manager
-                .cli_state
-                .identities
-                .get(identity)?
-                .identifier()
-        } else {
-            self.node_manager.identifier().clone()
-        };
+        let identifier = self
+            .node_manager
+            .get_identifier_by_name(request.identity_name)
+            .await?;
 
         match self
             .node_manager
@@ -170,7 +164,7 @@ impl NodeManagerWorker {
             .node_manager
             .trust_context()?
             .authority()?
-            .credential(ctx, self.node_manager.identifier())
+            .credential(ctx, &self.node_manager.identifier().await?)
             .await?;
 
         if request.oneway {

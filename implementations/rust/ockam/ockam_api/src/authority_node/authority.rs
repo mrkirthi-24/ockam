@@ -2,13 +2,12 @@ use std::path::Path;
 
 use tracing::info;
 
-use ockam::identity::storage::LmdbStorage;
-use ockam::identity::Vault;
 use ockam::identity::{
-    CredentialsIssuer, Identifier, Identities, IdentitiesRepository, IdentitiesStorage,
-    IdentityAttributesReader, IdentityAttributesWriter, SecureChannelListenerOptions,
-    SecureChannels, TrustEveryonePolicy,
+    CredentialsIssuer, Identifier, Identities, IdentitiesRepository, IdentityAttributesReader,
+    IdentityAttributesWriter, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
 };
+use ockam::identity::{IdentitiesSqlxDatabase, Vault};
+use ockam::SqlxDatabase;
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::sync::Arc;
@@ -284,8 +283,8 @@ impl Authority {
     ) -> Result<Arc<dyn IdentitiesRepository>> {
         let storage_path = &configuration.storage_path;
         Self::create_ockam_directory_if_necessary(storage_path)?;
-        let storage = Arc::new(LmdbStorage::new(&storage_path).await?);
-        let repository = Arc::new(IdentitiesStorage::new(storage));
+        let storage = Arc::new(SqlxDatabase::create(&storage_path).await?);
+        let repository = Arc::new(IdentitiesSqlxDatabase::new(storage));
         Ok(Self::bootstrap_repository(repository, configuration))
     }
 
