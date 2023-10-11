@@ -13,9 +13,7 @@ use tokio::try_join;
 
 use ockam::{Address, AsyncTryClone, TcpListenerOptions};
 use ockam::{Context, TcpTransport};
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_api::cli_state::{add_project_info_to_node_state, init_node_state, random_name};
-use ockam_api::nodes::models::transport::CreateTransportJson;
+use ockam_api::cli_state::random_name;
 use ockam_api::nodes::service::NodeManagerTrustOptions;
 use ockam_api::nodes::BackgroundNode;
 use ockam_api::nodes::InMemoryNode;
@@ -134,17 +132,6 @@ impl Default for CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        if !self.child_process {
-            if let Ok(state) = opts.state.nodes.get(&self.node_name) {
-                if state.is_running() {
-                    eprintln!(
-                        "{:?}",
-                        miette!("Node {} is already running", self.node_name)
-                    );
-                    std::process::exit(exitcode::SOFTWARE);
-                }
-            }
-        }
         if self.foreground {
             local_cmd(foreground_mode(opts, self));
         } else {
@@ -187,6 +174,12 @@ pub(crate) async fn background_mode(
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
     let node_name = &parse_node_name(&cmd.node_name)?;
+
+    if opts.state.is_node_running(&node_name).await? {
+        eprintln!("{:?}", miette!("Node {} is already running", &node_name));
+        std::process::exit(exitcode::SOFTWARE);
+    }
+
     opts.terminal.write_line(&fmt_log!(
         "Creating Node {}...\n",
         node_name
@@ -256,7 +249,7 @@ async fn run_foreground_node(
 
     // This node was initially created as a foreground node
     // and there is no existing state for it yet.
-    if !cmd.child_process && !opts.state.nodes.exists(&node_name) {
+    if !cmd.child_process && !opts.state.get_node(&node_name).await.is_ok() {
         init_node_state(
             &opts.state,
             &node_name,
@@ -287,22 +280,15 @@ async fn run_foreground_node(
         .await
         .into_diagnostic()?;
 
-    let node_state = opts.state.nodes.get(&node_name)?;
-    node_state.set_pid(process::id() as i32)?;
-    node_state.set_setup(
-        &node_state
-            .config()
-            .setup_mut()
-            .set_verbose(opts.global_args.verbose)
-            .set_api_transport(
-                CreateTransportJson::new(
-                    TransportType::Tcp,
-                    TransportMode::Listen,
-                    &listener.socket_address().to_string(),
-                )
-                .into_diagnostic()?,
-            ),
-    )?;
+    opts.state.set_node_pid(&node_name, process::id()).await?;
+    opts.state
+        .set_node_transport(
+            &node_name,
+            TransportType::Tcp,
+            TransportMode::Listen,
+            listener.socket_address().to_string(),
+        )
+        .await?;
 
     let pre_trusted_identities = load_pre_trusted_identities(&cmd)?;
 
@@ -358,9 +344,7 @@ async fn run_foreground_node(
     .await?;
 
     // Try to stop node; it might have already been stopped or deleted (e.g. when running `node delete --all`)
-    if let Ok(state) = opts.state.nodes.get(&node_name) {
-        let _ = state.kill_process(false);
-    }
+    opts.state.kill_node(&node_name, true).await?;
     ctx.stop().await.into_diagnostic()?;
     opts.terminal
         .write_line(format!("{}Node stopped successfully", "✔︎".light_green()).as_str())
@@ -441,13 +425,13 @@ pub async fn spawn_background_node(
 ) -> miette::Result<()> {
     let node_name = parse_node_name(&cmd.node_name)?;
     // Create node state, including the vault and identity if don't exist
-    init_node_state(
-        &opts.state,
-        &node_name,
-        cmd.vault.as_deref(),
-        cmd.identity.as_deref(),
-    )
-    .await?;
+    // init_node_state(
+    //     &opts.state,
+    //     &node_name,
+    //     cmd.vault.as_deref(),
+    //     cmd.identity.as_deref(),
+    // )
+    // .await?;
 
     let trust_context_path = match cmd.trust_context_opts.trust_context.clone() {
         Some(tc) => {
@@ -475,7 +459,8 @@ pub async fn spawn_background_node(
         trust_context_path.as_ref(),
         cmd.trust_context_opts.project.as_ref(),
         cmd.logging_to_file(),
-    )?;
+    )
+    .await?;
 
     Ok(())
 }

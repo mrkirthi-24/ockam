@@ -7,7 +7,6 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use rand::random;
 
-use ockam_api::cli_state::StateDirTrait;
 use ockam_core::env::get_env_with_default;
 
 use crate::util::api::TrustContextOpts;
@@ -29,17 +28,20 @@ impl Default for NodeManagerDefaults {
     }
 }
 
-pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> miette::Result<()> {
-    opts.state.nodes.delete_sigkill(name, force)?;
-    Ok(())
+pub async fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> miette::Result<()> {
+    Ok(opts.state.delete_node_sigkill(name, force).await?)
 }
 
-pub fn delete_all_nodes(opts: &CommandGlobalOpts, force: bool) -> miette::Result<()> {
-    let nodes_states = opts.state.nodes.list()?;
+pub async fn delete_all_nodes(opts: &CommandGlobalOpts, force: bool) -> miette::Result<()> {
+    let node_infos = opts.state.get_nodes().await?;
     let mut deletion_errors = Vec::new();
-    for s in nodes_states {
-        if let Err(e) = opts.state.nodes.delete_sigkill(s.name(), force) {
-            deletion_errors.push((s.name().to_string(), e));
+    for node_info in node_infos {
+        if let Err(e) = opts
+            .state
+            .delete_node_sigkill(&node_info.name(), force)
+            .await
+        {
+            deletion_errors.push((node_info.name(), e));
         }
     }
     if !deletion_errors.is_empty() {
@@ -51,16 +53,13 @@ pub fn delete_all_nodes(opts: &CommandGlobalOpts, force: bool) -> miette::Result
     Ok(())
 }
 
-pub fn check_default(opts: &CommandGlobalOpts, name: &str) -> bool {
-    if let Ok(default) = opts.state.nodes.default() {
-        return default.name() == name;
-    }
-    false
+pub async fn check_default(opts: &CommandGlobalOpts, name: &str) -> miette::Result<bool> {
+    Ok(opts.state.get_node(name).await?.is_default())
 }
 
 /// A utility function to spawn a new node into foreground mode
 #[allow(clippy::too_many_arguments)]
-pub fn spawn_node(
+pub async fn spawn_node(
     opts: &CommandGlobalOpts,
     name: &str,
     address: &str,
@@ -151,11 +150,11 @@ pub fn spawn_node(
 
     args.push(name.to_owned());
 
-    run_ockam(opts, name, args, logging_to_file)
+    run_ockam(opts, name, args, logging_to_file).await
 }
 
 /// Run the ockam command line with specific arguments
-pub fn run_ockam(
+pub async fn run_ockam(
     opts: &CommandGlobalOpts,
     node_name: &str,
     args: Vec<String>,
@@ -166,12 +165,12 @@ pub fn run_ockam(
     // deterministic way of starting a node.
     let ockam_exe = get_env_with_default("OCKAM", current_exe().unwrap_or_else(|_| "ockam".into()))
         .into_diagnostic()?;
-    let node_state = opts.state.nodes.get(node_name)?;
+    let node_info = opts.state.get_node(node_name).await?;
 
     let mut cmd = Command::new(ockam_exe);
 
     if logging_to_file {
-        let (mlog, elog) = { (node_state.stdout_log(), node_state.stderr_log()) };
+        let (mlog, elog) = { (node_info.stdout_log(), node_info.stderr_log()) };
         let main_log_file = OpenOptions::new()
             .create(true)
             .append(true)
@@ -187,14 +186,10 @@ pub fn run_ockam(
         cmd.stdout(main_log_file).stderr(stderr_log_file);
     }
 
-    let child = cmd
-        .args(args)
+    cmd.args(args)
         .stdin(Stdio::null())
         .spawn()
         .into_diagnostic()
         .context("failed to spawn node")?;
-
-    node_state.set_pid(child.id() as i32)?;
-
     Ok(())
 }

@@ -9,7 +9,7 @@ use miette::{miette, IntoDiagnostic};
 use tracing::error;
 
 use ockam::{Address, Context, NodeBuilder};
-use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::CliState;
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_core::DenyAll;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
@@ -18,6 +18,7 @@ use ockam_multiaddr::{
     MultiAddr, Protocol,
 };
 
+use crate::error::Error;
 use crate::Result;
 
 pub mod api;
@@ -174,7 +175,10 @@ pub fn parse_node_name(input: &str) -> Result<String> {
 /// Example:
 ///     if n1 has address of 127.0.0.1:1234
 ///     `/node/n1` -> `/ip4/127.0.0.1/tcp/1234`
-pub fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> crate::Result<MultiAddr> {
+pub async fn process_nodes_multiaddr(
+    addr: &MultiAddr,
+    cli_state: &CliState,
+) -> crate::Result<MultiAddr> {
     let mut processed_addr = MultiAddr::default();
     for proto in addr.iter() {
         match proto.code() {
@@ -182,9 +186,8 @@ pub fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> crate:
                 let alias = proto
                     .cast::<Node>()
                     .ok_or_else(|| miette!("Invalid node address protocol"))?;
-                let node_state = cli_state.nodes.get(alias.to_string())?;
-                let node_setup = node_state.config().setup();
-                let addr = node_setup.api_transport()?.maddr()?;
+                let node_info = cli_state.get_node(&alias.to_string()).await?;
+                let addr = node_info.api_transport_multiaddr()?;
                 processed_addr.try_extend(&addr)?
             }
             _ => processed_addr.push_back_value(&proto)?,
@@ -196,7 +199,7 @@ pub fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> crate:
 /// Go through a multiaddr and remove all instances of
 /// `/node/<whatever>` out of it and replaces it with a fully
 /// qualified address to the target
-pub fn clean_nodes_multiaddr(
+pub async fn clean_nodes_multiaddr(
     input: &MultiAddr,
     cli_state: &CliState,
 ) -> Result<(MultiAddr, LookupMeta)> {
@@ -207,10 +210,14 @@ pub fn clean_nodes_multiaddr(
         match p.code() {
             Node::CODE => {
                 let alias = p.cast::<Node>().expect("Failed to parse node name");
-                let node_state = cli_state.nodes.get(alias.to_string())?;
-                let node_setup = node_state.config().setup();
-                let addr = &node_setup.api_transport()?.addr;
-                match addr {
+                let node_info = cli_state.get_node(&alias.to_string()).await?;
+                let addr = node_info
+                    .api_transport_address()
+                    .ok_or(Error::new_internal_error(
+                        "No transport API has been set on the node",
+                        "",
+                    ))?;
+                match &addr {
                     InternetAddress::Dns(dns, _) => new_ma.push_back(DnsAddr::new(dns))?,
                     InternetAddress::V4(v4) => new_ma.push_back(Ip4(*v4.ip()))?,
                     InternetAddress::V6(v6) => new_ma.push_back(Ip6(*v6.ip()))?,
@@ -260,8 +267,8 @@ mod tests {
     use ockam_api::address::extract_address_value;
     use ockam_api::cli_state;
     use ockam_api::cli_state::traits::StateDirTrait;
-    use ockam_api::cli_state::{NodeConfig, VaultConfig};
-    use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
+    use ockam_api::cli_state::VaultConfig;
+    use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 
     use super::*;
 
@@ -328,11 +335,13 @@ mod tests {
         cli_state.create_identity_with_random_name().await?;
 
         let n_state = cli_state
-            .nodes
-            .create("n1", NodeConfig::try_from(&cli_state)?)?;
-        n_state.set_setup(&n_state.config().setup_mut().set_api_transport(
-            CreateTransportJson::new(TransportType::Tcp, TransportMode::Listen, "127.0.0.0:4000")?,
-        ))?;
+            .set_node_transport(
+                "n1",
+                TransportType::Tcp,
+                TransportMode::Listen,
+                "127.0.0.0:4000".to_string(),
+            )
+            .await?;
 
         let test_cases = vec![
             (
@@ -356,11 +365,12 @@ mod tests {
         for (ma, expected) in test_cases {
             if let Ok(addr) = expected {
                 let result = process_nodes_multiaddr(&ma, &cli_state)
+                    .await
                     .unwrap()
                     .to_string();
                 assert_eq!(result, addr);
             } else {
-                assert!(process_nodes_multiaddr(&ma, &cli_state).is_err());
+                assert!(process_nodes_multiaddr(&ma, &cli_state).await.is_err());
             }
         }
 

@@ -152,7 +152,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> m
         cmd.yes,
         "Are you sure you want to delete this secure channel?",
     )? {
-        let at = get_node_name(&opts.state, &cmd.at);
+        let at = get_node_name(&opts.state, &cmd.at).await;
         let node_name = parse_node_name(&at)?;
         let address = &cmd.address;
         let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;

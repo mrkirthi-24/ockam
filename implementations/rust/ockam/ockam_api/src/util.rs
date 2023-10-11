@@ -384,7 +384,7 @@ pub mod test_utils {
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
 
-    use crate::cli_state::{random_name, traits::*, CliState, VaultConfig};
+    use crate::cli_state::{random_name, CliState, VaultConfig};
     use crate::config::cli::{CredentialRetrieverConfig, TrustAuthorityConfig, TrustContextConfig};
     use crate::nodes::service::{
         NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,

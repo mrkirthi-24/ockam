@@ -40,11 +40,10 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.from);
         node_rpc(run_impl, (opts, self))
     }
 
-    fn print_output(
+    async fn print_output(
         &self,
         opts: &CommandGlobalOpts,
         response: &TransportStatus,
@@ -56,7 +55,7 @@ impl CreateCommand {
                     println!("{}", response.multiaddr().into_diagnostic()?);
                     return Ok(());
                 }
-                let from = get_node_name(&opts.state, &self.node_opts.from);
+                let from = get_node_name(&opts.state, &self.node_opts.from).await;
                 let to = response.socket_addr().into_diagnostic()?;
                 if opts.global_args.no_color {
                     println!("\n  TCP Connection:");
@@ -91,10 +90,10 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
-    let from = get_node_name(&opts.state, &cmd.node_opts.from);
+    let from = get_node_name(&opts.state, &cmd.node_opts.from).await;
     let node_name = extract_address_value(&from)?;
     let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let request = api::create_tcp_connection(&cmd);
     let transport_status: TransportStatus = node.ask(&ctx, request).await?;
-    cmd.print_output(&opts, &transport_status)
+    cmd.print_output(&opts, &transport_status).await
 }

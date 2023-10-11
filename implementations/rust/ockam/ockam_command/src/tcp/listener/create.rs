@@ -37,7 +37,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.at);
+    let node_name = get_node_name(&opts.state, &cmd.at).await;
     let node_name = parse_node_name(&node_name)?;
     let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
     let transport_status: TransportStatus = node

@@ -1,22 +1,20 @@
+use clap::{Args, Subcommand};
+use colorful::Colorful;
+
+pub use create::CreateCommand;
+pub(crate) use delete::DeleteCommand;
+pub(crate) use list::ListCommand;
+use ockam_api::cli_state::CliState;
+pub(crate) use show::ShowCommand;
+
+use crate::identity::default::DefaultCommand;
+use crate::{docs, CommandGlobalOpts};
+
 mod create;
 mod default;
 mod delete;
 mod list;
 mod show;
-
-use colorful::Colorful;
-pub use create::CreateCommand;
-pub(crate) use delete::DeleteCommand;
-pub(crate) use list::ListCommand;
-pub(crate) use show::ShowCommand;
-
-use crate::identity::default::DefaultCommand;
-use crate::terminal::OckamColor;
-use crate::Result;
-use crate::{docs, fmt_log, fmt_ok, CommandGlobalOpts, PARSER_LOGS};
-use clap::{Args, Subcommand};
-use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::CliState;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
@@ -55,9 +53,9 @@ impl IdentityCommand {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::GlobalArgs;
-    use ockam_api::cli_state::StateItemTrait;
+
+    use super::*;
 
     #[test]
     fn test_initialize() {

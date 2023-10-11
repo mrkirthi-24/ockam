@@ -6,7 +6,6 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::workers::{WorkerList, WorkerStatus};
 use ockam_api::nodes::BackgroundNode;
 
@@ -23,9 +22,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 /// List workers on a node
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {
     /// Node at which to lookup workers
@@ -44,10 +43,10 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.at);
+    let at = get_node_name(&opts.state, &cmd.at).await;
     let node_name = extract_address_value(&at)?;
 
-    if !opts.state.nodes.get(&node_name)?.is_running() {
+    if !opts.state.is_node_running(&node_name).await? {
         return Err(miette!("The node '{}' is not running", node_name));
     }
 

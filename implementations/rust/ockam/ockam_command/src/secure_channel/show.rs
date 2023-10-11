@@ -20,10 +20,10 @@ const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 /// Show Secure Channels
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = true,
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+arg_required_else_help = true,
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct ShowCommand {
     /// Node at which the secure channel was initiated
@@ -42,7 +42,7 @@ impl ShowCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.at);
+    let at = get_node_name(&opts.state, &cmd.at).await;
     let node_name = parse_node_name(&at)?;
     let address = &cmd.address;
 

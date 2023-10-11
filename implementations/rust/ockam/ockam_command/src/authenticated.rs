@@ -90,7 +90,7 @@ async fn make_background_node_client(
     addr: &MultiAddr,
 ) -> Result<BackgroundNode> {
     is_local_node(addr).context("The address must point to a local node")?;
-    let to = get_node_name(&opts.state, &Some(addr.to_string()));
+    let to = get_node_name(&opts.state, &Some(addr.to_string())).await;
     let node_name = extract_address_value(&to)?;
     Ok(BackgroundNode::create(ctx, &opts.state, &node_name).await?)
 }

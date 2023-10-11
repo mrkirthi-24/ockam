@@ -43,7 +43,7 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let at = get_node_name(&opts.state, &cmd.node_opts.at_node).await;
     let node_name = parse_node_name(&at)?;
     let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     let req = api::delete_secure_channel_listener(&cmd.address);

@@ -41,7 +41,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.at);
+    let at = get_node_name(&opts.state, &cmd.at).await;
     let node_name = extract_address_value(&at)?;
     let remote_address = &cmd.remote_address;
     let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;

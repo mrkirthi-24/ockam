@@ -53,7 +53,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
         let payload = StartKafkaOutletRequest::new(bootstrap_server);
         let payload = StartServiceRequest::new(payload, &addr);
         let req = Request::post("/node/services/kafka_outlet").body(payload);
-        let node_name = get_node_name(&opts.state, &node_opts.at_node);
+        let node_name = get_node_name(&opts.state, &node_opts.at_node).await;
         let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
 
         start_service_impl(&ctx, &node, "KafkaOutlet", req).await?;

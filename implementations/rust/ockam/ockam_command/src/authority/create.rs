@@ -1,25 +1,28 @@
-use crate::node::util::run_ockam;
-use crate::util::{embedded_node_that_is_not_stopped, exitcode};
-use crate::util::{local_cmd, node_rpc};
-use crate::{docs, identity, CommandGlobalOpts, Result};
-use clap::{ArgGroup, Args};
+use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
+use std::process;
+
+use clap::Args;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
+use serde::{Deserialize, Serialize};
+use tracing::debug;
+
 use ockam::identity::{AttributesEntry, Identifier};
 use ockam::Context;
 use ockam_api::authority_node;
 use ockam_api::authority_node::{OktaConfiguration, TrustedIdentity};
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
-use ockam_api::cli_state::init_node_state;
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
+use ockam_api::cli_state::traits::StateDirTrait;
+use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::DefaultAddress;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
-use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
-use std::path::PathBuf;
-use tracing::debug;
+
+use crate::node::util::run_ockam;
+use crate::util::{embedded_node_that_is_not_stopped, exitcode};
+use crate::util::{local_cmd, node_rpc};
+use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -28,9 +31,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 /// Create an Authority node
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 #[clap(group(ArgGroup::new("trusted").required(true).args(& ["trusted_identities", "reload_from_trusted_identities_file"])))]
 pub struct CreateCommand {
@@ -187,7 +190,7 @@ async fn spawn_background_node(
     }
     args.push(cmd.node_name.to_string());
 
-    run_ockam(opts, &cmd.node_name, args, cmd.logging_to_file())
+    run_ockam(opts, &cmd.node_name, args, cmd.logging_to_file()).await
 }
 
 impl CreateCommand {
@@ -260,15 +263,15 @@ async fn start_authority_node(
     let (opts, cmd) = args;
 
     // Create node state, including the vault and identity if they don't exist
-    if !opts.state.nodes.exists(&cmd.node_name) {
-        init_node_state(
-            &opts.state,
-            &cmd.node_name,
-            cmd.vault.as_deref(),
-            cmd.identity.as_deref(),
-        )
-        .await?;
-    };
+    // if !opts.state.nodes.exists(&cmd.node_name) {
+    //     init_node_state(
+    //         &opts.state,
+    //         &cmd.node_name,
+    //         cmd.vault.as_deref(),
+    //         cmd.identity.as_deref(),
+    //     )
+    //     .await?;
+    // };
 
     // Retrieve the authority identity if it has been created before
     // otherwise create a new one
@@ -293,22 +296,17 @@ async fn start_authority_node(
     // the `ockam node list` command, without having to send a TCP query to open a connection
     // because this would fail if there is no intention to create a secure channel
     debug!("updating node state's setup config");
-    let node_state = opts.state.nodes.get(&cmd.node_name)?;
-    node_state.set_setup(
-        &node_state
-            .config()
-            .setup_mut()
-            .set_verbose(opts.global_args.verbose)
-            .set_authority_node()
-            .set_api_transport(
-                CreateTransportJson::new(
-                    TransportType::Tcp,
-                    TransportMode::Listen,
-                    cmd.tcp_listener_address.as_str(),
-                )
-                .into_diagnostic()?,
-            ),
-    )?;
+    opts.state
+        .set_node_transport(
+            &cmd.node_name,
+            TransportType::Tcp,
+            TransportMode::Listen,
+            cmd.tcp_listener_address.clone(),
+        )
+        .await?;
+    opts.state
+        .set_node_pid(&cmd.node_name, process::id())
+        .await?;
 
     let trusted_identities = cmd.trusted_identities(&identifier)?;
 
@@ -344,9 +342,10 @@ fn parse_trusted_identities(values: &str) -> Result<TrustedIdentities> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ockam::identity::Identifier;
     use ockam_core::compat::collections::HashMap;
+
+    use super::*;
 
     #[test]
     fn test_parse_trusted_identities() {

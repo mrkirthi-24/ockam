@@ -42,7 +42,7 @@ async fn run_impl(
         "Are you sure you want to delete this TCP connection?",
     )? {
         let address = cmd.address;
-        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node).await;
         let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         let req = Request::delete("/node/tcp/connection")
             .body(models::transport::DeleteTransport::new(address.clone()));

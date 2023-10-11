@@ -1,9 +1,8 @@
 use clap::Args;
-use miette::{miette, IntoDiagnostic};
+use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::cli_state;
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
 use ockam_vault::{HandleToSecret, SigningSecretKeyHandle};
 
 use crate::util::node_rpc;

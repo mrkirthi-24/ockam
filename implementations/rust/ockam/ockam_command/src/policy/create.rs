@@ -41,7 +41,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.at);
+    let at = get_node_name(&opts.state, &cmd.at).await;
     let node_name = parse_node_name(&at)?;
     let bdy = Policy::new(cmd.expression);
     let req = Request::post(policy_path(&cmd.resource, &cmd.action)).body(bdy);

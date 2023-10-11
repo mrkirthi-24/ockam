@@ -36,7 +36,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: PresentCommand,
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node).await;
     let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     node.present_credential(ctx, &cmd.to, cmd.oneway).await?;
     Ok(())

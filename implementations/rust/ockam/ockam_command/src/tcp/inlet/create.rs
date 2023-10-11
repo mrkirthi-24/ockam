@@ -13,7 +13,6 @@ use tracing::log::trace;
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_abac::Resource;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::CreateInlet;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::BackgroundNode;
@@ -98,9 +97,9 @@ async fn rpc(
     ))?;
     display_parse_logs(&opts);
 
-    cmd.to = process_nodes_multiaddr(&cmd.to, &opts.state)?;
+    cmd.to = process_nodes_multiaddr(&cmd.to, &opts.state).await?;
 
-    let node_name = get_node_name(&opts.state, &cmd.at);
+    let node_name = get_node_name(&opts.state, &cmd.at).await;
     let node_name = parse_node_name(&node_name)?;
 
     let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
@@ -109,18 +108,11 @@ async fn rpc(
     let create_inlet = async {
         port_is_free_guard(&cmd.from)?;
 
-        let project = opts
-            .state
-            .nodes
-            .get(&node_name)?
-            .config()
-            .setup()
-            .project
-            .to_owned();
+        let project = opts.state.get_node_project(&node_name).await?;
         let resource = Resource::new("tcp-inlet");
         if let Some(p) = project {
             if !has_policy(&node_name, &ctx, &opts, &resource).await? {
-                add_default_project_policy(&node_name, &ctx, &opts, p, &resource).await?;
+                add_default_project_policy(&node_name, &ctx, &opts, p.id, &resource).await?;
             }
         }
 

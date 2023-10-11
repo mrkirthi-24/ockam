@@ -223,7 +223,7 @@ async fn refresh_inlets<R: Runtime>(app: &AppHandle<R>) -> crate::Result<()> {
                     }
 
                     debug!(node = %i.local_node_name, "Checking node status");
-                    if let Ok(node) = cli_state.nodes.get(&i.local_node_name) {
+                    if let Ok(node) = cli_state.get_node(&i.local_node_name).await {
                         if node.is_running() {
                             debug!(node = %i.local_node_name, "Node already running");
                             if let Ok(inlet) = background_node_client

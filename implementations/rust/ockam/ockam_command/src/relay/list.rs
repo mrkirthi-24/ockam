@@ -7,7 +7,6 @@ use tracing::trace;
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
@@ -23,9 +22,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 /// List Relays
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = false,
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+arg_required_else_help = false,
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {
     ///  List all the relays relaying traffic to the specified node
@@ -44,10 +43,10 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
-    let to = get_node_name(&opts.state, &cmd.to);
+    let to = get_node_name(&opts.state, &cmd.to).await;
     let node_name = extract_address_value(&to)?;
 
-    if !opts.state.nodes.get(&node_name)?.is_running() {
+    if !opts.state.is_node_running(&node_name).await? {
         return Err(miette!("The node '{}' is not running", node_name));
     }
 

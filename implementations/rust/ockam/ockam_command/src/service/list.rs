@@ -8,7 +8,6 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::services::{ServiceList, ServiceStatus};
 use ockam_api::nodes::BackgroundNode;
 
@@ -37,10 +36,10 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> mie
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: ListCommand) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node).await;
     let node_name = parse_node_name(&node_name)?;
 
-    if !opts.state.nodes.get(&node_name)?.is_running() {
+    if !opts.state.is_node_running(&node_name).await? {
         return Err(miette!("The node '{}' is not running", node_name));
     }
 

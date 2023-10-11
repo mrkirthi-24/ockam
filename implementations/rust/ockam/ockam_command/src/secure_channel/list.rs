@@ -7,7 +7,6 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
 use ockam_api::nodes::BackgroundNode;
 use ockam_api::route_to_multiaddr;
@@ -30,10 +29,10 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 /// List Secure Channels
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = true,
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+arg_required_else_help = true,
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct ListCommand {
     /// Node at which the returned secure channels were initiated
@@ -84,10 +83,10 @@ impl ListCommand {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.at);
+    let at = get_node_name(&opts.state, &cmd.at).await;
     let node_name = parse_node_name(&at)?;
 
-    if !opts.state.nodes.get(&node_name)?.is_running() {
+    if !opts.state.is_node_running(&node_name).await? {
         return Err(miette!("The node '{}' is not running", node_name));
     }
 

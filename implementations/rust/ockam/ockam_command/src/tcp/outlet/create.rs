@@ -9,7 +9,6 @@ use tokio::try_join;
 use ockam::Context;
 use ockam_abac::Resource;
 use ockam_api::address::extract_address_value;
-use ockam_api::cli_state::{StateDirTrait, StateItemTrait};
 use ockam_api::nodes::models::portal::{CreateOutlet, OutletStatus};
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
@@ -69,20 +68,13 @@ pub async fn run_impl(
     ))?;
     display_parse_logs(&opts);
 
-    let node_name = get_node_name(&opts.state, &cmd.at);
+    let node_name = get_node_name(&opts.state, &cmd.at).await;
     let node_name = extract_address_value(&node_name)?;
-    let project = opts
-        .state
-        .nodes
-        .get(&node_name)?
-        .config()
-        .setup()
-        .project
-        .to_owned();
+    let project = opts.state.get_node_project(&node_name).await?;
     let resource = Resource::new("tcp-outlet");
     if let Some(p) = project {
         if !has_policy(&node_name, &ctx, &opts, &resource).await? {
-            add_default_project_policy(&node_name, &ctx, &opts, p, &resource).await?;
+            add_default_project_policy(&node_name, &ctx, &opts, p.id, &resource).await?;
         }
     }
 
@@ -150,7 +142,7 @@ pub async fn send_request(
     payload: CreateOutlet,
     to_node: impl Into<Option<String>>,
 ) -> crate::Result<OutletStatus> {
-    let node_name = get_node_name(&opts.state, &to_node.into());
+    let node_name = get_node_name(&opts.state, &to_node.into()).await;
     let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     let req = Request::post("/node/outlet").body(payload);
     Ok(node.ask(ctx, req).await?)

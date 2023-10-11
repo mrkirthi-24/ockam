@@ -12,6 +12,7 @@ use ockam::SqlxDatabase;
 use ockam_abac::{PoliciesRepository, PolicySqlxDatabase};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env_with_default;
+use ockam_multiaddr::MultiAddr;
 use ockam_node::Executor;
 
 pub use crate::cli_state::credentials::*;
@@ -22,9 +23,8 @@ pub use crate::cli_state::traits::*;
 pub use crate::cli_state::trust_contexts::*;
 use crate::cli_state::user_info::UsersInfoState;
 pub use crate::cli_state::vaults::*;
-use crate::config::lookup::ProjectLookup;
-use crate::enroll::enrollment::EnrollStatus;
-use crate::nodes::models::transport::CreateTransportJson;
+use crate::config::lookup::{InternetAddress, ProjectLookup};
+use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 
 pub mod credentials;
 pub mod nodes;
@@ -297,7 +297,31 @@ impl CliState {
         todo!("get_node_by_name")
     }
 
+    pub async fn is_node_running(&self, node_name: &str) -> Result<bool> {
+        todo!("is_node_running")
+    }
+
+    pub fn stdout_logs(&self, node_name: &str) -> PathBuf {
+        todo!("stdout_logs")
+    }
+
+    pub async fn get_node_project(&self, node_name: &str) -> Result<Option<ProjectConfig>> {
+        todo!("get_node_project")
+    }
+
+    pub async fn kill_node(&self, node_name: &str, force: bool) -> Result<()> {
+        todo!("kill_node")
+    }
+
+    pub async fn delete_node_sigkill(&self, node_name: &str, force: bool) -> Result<()> {
+        todo!("delete_sigkill")
+    }
+
     pub async fn delete_node(&self, node_name: &str) -> Result<()> {
+        todo!("get_node_by_name")
+    }
+
+    pub async fn delete_default_node(&self) -> Result<()> {
         todo!("get_node_by_name")
     }
 
@@ -305,6 +329,31 @@ impl CliState {
         todo!("get_default_node")
     }
 
+    pub async fn is_default_node(&self, name: &str) -> Result<bool> {
+        todo!("is_default_node")
+    }
+
+    pub async fn set_default_node(&self, name: &str) -> Result<bool> {
+        todo!("set_default_node")
+    }
+
+    pub async fn set_node_transport(
+        &self,
+        node_name: &str,
+        transport_type: TransportType,
+        transport_mode: TransportMode,
+        address: String,
+    ) -> Result<()> {
+        todo!("set_node_transport")
+    }
+
+    pub async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
+        todo!("set_node_pid")
+    }
+
+    pub async fn is_node_api_transport_set(&self, node_name: &str) -> Result<bool> {
+        todo!("is_node_api_transport_set")
+    }
     /// fault identity but if it has not been initialized yet
     // /// then initialize it
     // pub async fn initialize_identity_if_default(opts: &CommandGlobalOpts, name: &Option<String>) {
@@ -556,7 +605,10 @@ pub struct NodeInfo {
     project: Option<ProjectLookup>,
     api_transport: Option<CreateTransportJson>,
     default_vault_name: String,
-    pid: Option<i32>,
+    pid: Option<u32>,
+    is_default: bool,
+    stdout_log: PathBuf,
+    stderr_log: PathBuf,
 }
 
 impl NodeInfo {
@@ -568,8 +620,49 @@ impl NodeInfo {
         self.identifier.clone()
     }
 
+    pub fn is_default(&self) -> bool {
+        self.is_default
+    }
+
+    pub fn pid(&self) -> Option<u32> {
+        self.pid.clone()
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.pid.is_some()
+    }
+
+    pub fn verbosity(&self) -> u8 {
+        self.verbosity
+    }
+
     pub fn api_transport_port(&self) -> Option<u16> {
-        self.api_transport.map(|t| t.addr.port())
+        self.api_transport.as_ref().map(|t| t.addr.port())
+    }
+
+    pub fn api_transport_address(&self) -> Option<InternetAddress> {
+        self.api_transport.as_ref().map(|t| t.addr.clone())
+    }
+
+    pub fn api_transport_multiaddr(&self) -> Result<MultiAddr> {
+        self.api_transport
+            .as_ref()
+            .ok_or(CliStateError::InvalidData(
+                "no transport has been set on the node".to_string(),
+            ))
+            .and_then(|t| t.maddr().map_err(|e| CliStateError::Ockam(e)))
+    }
+
+    pub fn is_authority_node(&self) -> bool {
+        self.is_authority_node
+    }
+
+    pub fn stdout_log(&self) -> PathBuf {
+        self.stdout_log.clone()
+    }
+
+    pub fn stderr_log(&self) -> PathBuf {
+        self.stderr_log.clone()
     }
 }
 

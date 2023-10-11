@@ -2,21 +2,14 @@ use std::io::Write;
 use std::time::Duration;
 
 use clap::Args;
-use colorful::core::StrMarker;
-use miette::miette;
-use minicbor::{Decode, Decoder, Encode};
 use tracing::warn;
 
-use ockam::identity::{Identifier, SecureChannelOptions, TrustIdentifierPolicy};
-use ockam::{Context, Node, TcpConnectionOptions, TcpTransport};
-use ockam_api::cli_state::traits::{StateDirTrait, StateItemTrait};
-use ockam_api::cli_state::{EnrollmentStatus, IdentityEnrollment, NodeState};
+use ockam::identity::Identifier;
+use ockam::Context;
+use ockam_api::cli_state::{EnrollmentStatus, IdentityEnrollment};
 use ockam_api::cloud::project::{OrchestratorVersionInfo, Projects};
 use ockam_api::nodes::models::base::NodeStatus as NodeStatusModel;
-use ockam_api::nodes::{BackgroundNode, InMemoryNode, NodeManager};
-use ockam_core::api::{Request, ResponseHeader, Status};
-use ockam_core::route;
-use ockam_node::MessageSendReceiveOptions;
+use ockam_api::nodes::{BackgroundNode, InMemoryNode};
 
 use crate::util::{api, node_rpc};
 use crate::CommandGlobalOpts;

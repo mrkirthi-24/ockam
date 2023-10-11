@@ -2,7 +2,6 @@ use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::BackgroundNode;
 use ockam_api::DefaultAddress;
@@ -38,10 +37,10 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node).await;
     let node_name = parse_node_name(&node_name)?;
 
-    if !opts.state.nodes.get(&node_name)?.is_running() {
+    if !opts.state.is_node_running(&node_name).await? {
         return Err(miette!("The node '{}' is not running", node_name));
     }
 

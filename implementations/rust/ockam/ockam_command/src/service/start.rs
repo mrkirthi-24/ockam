@@ -80,7 +80,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StartCommand)) -> mi
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StartCommand) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node).await;
     let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     let mut is_hop_service = false;
     let addr = match cmd.create_subcommand {

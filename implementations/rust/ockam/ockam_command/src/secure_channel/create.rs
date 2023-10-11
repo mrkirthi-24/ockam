@@ -15,13 +15,13 @@ use ockam_api::route_to_multiaddr;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
-use crate::docs;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
 use crate::util::api::CloudOpts;
 use crate::util::clean_nodes_multiaddr;
 use crate::{
+    docs,
     error::Error,
     fmt_log, fmt_ok,
     terminal::OckamColor,
@@ -35,9 +35,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 /// Create Secure Channels
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = true,
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP),
+arg_required_else_help = true,
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct CreateCommand {
     /// Node from which to initiate the secure channel
@@ -75,7 +75,7 @@ impl CreateCommand {
         node: &BackgroundNode,
     ) -> miette::Result<MultiAddr> {
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
-            .into_diagnostic()
+            .await
             .wrap_err(format!("Could not convert {} into route", &self.to))?;
         let identity_name = opts
             .state

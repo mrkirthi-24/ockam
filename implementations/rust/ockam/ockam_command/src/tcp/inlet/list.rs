@@ -5,7 +5,6 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam_api::address::extract_address_value;
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::portal::InletList;
 use ockam_api::nodes::BackgroundNode;
 use ockam_core::api::Request;
@@ -40,10 +39,10 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node.at_node);
+    let node_name = get_node_name(&opts.state, &cmd.node.at_node).await;
     let node_name = extract_address_value(&node_name)?;
 
-    if !opts.state.nodes.get(&node_name)?.is_running() {
+    if !opts.state.is_node_running(&node_name).await? {
         return Err(miette!("The node '{}' is not running", node_name));
     }
 

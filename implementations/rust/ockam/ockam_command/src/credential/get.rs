@@ -31,7 +31,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, GetCommand)) -> miet
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: GetCommand) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node).await;
     let node = BackgroundNode::create(ctx, &opts.state, &node_name).await?;
     node.get_credential(ctx, cmd.overwrite, cmd.identity)
         .await?;

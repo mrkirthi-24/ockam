@@ -1,10 +1,11 @@
 use clap::Args;
 use colorful::Colorful;
+use ockam_node::Context;
 
 use crate::node::get_node_name;
 use crate::node::util::{delete_all_nodes, delete_node};
 
-use crate::util::local_cmd;
+use crate::util::{local_cmd, node_rpc};
 use crate::{docs, fmt_ok, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -36,12 +37,15 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        local_cmd(run_impl(opts, self));
+        node_rpc(run_impl, (opts, self));
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_name);
+async fn run_impl(
+    ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
+) -> miette::Result<()> {
+    let node_name = get_node_name(&opts.state, &cmd.node_name).await;
     let prompt_msg = if cmd.all {
         "Are you sure you want to delete all nodes?"
     } else {
@@ -52,13 +56,13 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
         .confirmed_with_flag_or_prompt(cmd.yes, prompt_msg)?
     {
         if cmd.all {
-            delete_all_nodes(&opts, cmd.force)?;
+            delete_all_nodes(&opts, cmd.force).await?;
             opts.terminal
                 .stdout()
                 .plain(fmt_ok!("All nodes have been deleted"))
                 .write_line()?;
         } else {
-            delete_node(&opts, &node_name, cmd.force)?;
+            delete_node(&opts, &node_name, cmd.force).await?;
             opts.terminal
                 .stdout()
                 .plain(fmt_ok!("Node with name '{}' has been deleted", &node_name))

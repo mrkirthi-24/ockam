@@ -42,7 +42,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
 ) -> miette::Result<()> {
-    let at = get_node_name(&opts.state, &cmd.at);
+    let at = get_node_name(&opts.state, &cmd.at).await;
     let node_name = parse_node_name(&at)?;
     if opts
         .terminal

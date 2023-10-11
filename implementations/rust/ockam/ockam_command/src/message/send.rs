@@ -64,8 +64,9 @@ impl SendCommand {
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> miette::Result<()> {
     async fn go(ctx: &Context, opts: CommandGlobalOpts, cmd: SendCommand) -> miette::Result<()> {
         // Process `--to` Multiaddr
-        let (to, meta) =
-            clean_nodes_multiaddr(&cmd.to, &opts.state).context("Argument '--to' is invalid")?;
+        let (to, meta) = clean_nodes_multiaddr(&cmd.to, &opts.state)
+            .await
+            .context("Argument '--to' is invalid")?;
 
         let msg_bytes = if cmd.hex {
             hex::decode(cmd.message)

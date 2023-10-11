@@ -13,7 +13,7 @@ use tracing::log::warn;
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::{random_name, update_enrolled_identity, SpaceConfig};
+use ockam_api::cli_state::{random_name, SpaceConfig};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{Project, Projects};
 use ockam_api::cloud::space::{Space, Spaces};
@@ -66,7 +66,7 @@ fn ctrlc_handler(opts: CommandGlobalOpts) {
                     "\n{} Received Ctrl+C again. Cancelling {}. Please try again.",
                     "!".red(), "ockam enroll".bold().light_yellow()
                 )
-                .as_str(),
+                    .as_str(),
             );
             process::exit(2);
         } else {
@@ -75,12 +75,12 @@ fn ctrlc_handler(opts: CommandGlobalOpts) {
                     "\n{} {} is still in progress. If you would like to stop the enrollment process, press Ctrl+C again.",
                     "!".red(), "ockam enroll".bold().light_yellow()
                 )
-                .as_str(),
+                    .as_str(),
             );
             is_confirmation.store(true, Ordering::Relaxed);
         }
     })
-    .expect("Error setting Ctrl-C handler");
+        .expect("Error setting Ctrl-C handler");
 }
 
 async fn run_impl(

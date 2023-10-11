@@ -5,7 +5,7 @@ use tracing::{debug, error, info};
 
 use ockam_api::cli_state;
 use ockam_api::cli_state::traits::StateDirTrait;
-use ockam_api::cli_state::{add_project_info_to_node_state, update_enrolled_identity, SpaceConfig};
+use ockam_api::cli_state::SpaceConfig;
 use ockam_api::cloud::project::{Project, Projects};
 use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::enroll::enrollment::Enrollment;
@@ -87,10 +87,12 @@ async fn enroll_with_token<R: Runtime>(app: &AppHandle<R>, app_state: &AppState)
     let space = retrieve_space(app_state).await?;
     system_tray_on_update_with_enroll_status(app, "Retrieving project...")?;
     retrieve_project(app, app_state, &space).await?;
+
     let identifier = update_enrolled_identity(&cli_state, NODE_NAME)
         .await
         .into_diagnostic()?;
     info!(%identifier, "User enrolled successfully");
+
     app.notification()
         .builder()
         .title("Enrolled successfully!")

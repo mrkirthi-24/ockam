@@ -2,14 +2,13 @@ use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 
-use ockam_api::cli_state::StateDirTrait;
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::BackgroundNode;
 use ockam_api::DefaultAddress;
 use ockam_core::api::Request;
 use ockam_node::Context;
 
-use crate::node::{get_node_name, initialize_node_if_default, NodeOpts};
+use crate::node::{get_node_name, NodeOpts};
 use crate::util::{node_rpc, parse_node_name};
 use crate::{docs, fmt_err, CommandGlobalOpts};
 
@@ -19,8 +18,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 /// List Kafka Producers
 #[derive(Args, Clone, Debug)]
 #[command(
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {
     #[command(flatten)]
@@ -29,7 +28,6 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        initialize_node_if_default(&opts, &self.node_opts.at_node);
         node_rpc(run_impl, (opts, self))
     }
 }
@@ -38,10 +36,10 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+    let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node).await;
     let node_name = parse_node_name(&node_name)?;
 
-    if !opts.state.nodes.get(&node_name)?.is_running() {
+    if !opts.state.is_node_running(&node_name).await? {
         return Err(miette!("The node '{}' is not running", node_name));
     }
 

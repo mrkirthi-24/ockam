@@ -42,11 +42,11 @@ pub async fn rpc(ctx: Context, (opts, args): (CommandGlobalOpts, ArgOpts)) -> mi
 
     display_parse_logs(&opts);
 
-    let project_route = process_nodes_multiaddr(&project_route, &opts.state)?;
+    let project_route = process_nodes_multiaddr(&project_route, &opts.state).await?;
 
     let is_finished = Mutex::new(false);
     let send_req = async {
-        let node_name = get_node_name(&opts.state, &node_opts.at_node);
+        let node_name = get_node_name(&opts.state, &node_opts.at_node).await;
         let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
 
         let payload = StartKafkaProducerRequest::new(

@@ -78,11 +78,11 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> m
 
     display_parse_logs(&opts);
 
-    let to = get_node_name(&opts.state, &cmd.to);
+    let to = get_node_name(&opts.state, &cmd.to).await;
     let node_name = extract_address_value(&to)?;
     let at_rust_node = is_local_node(&cmd.at).wrap_err("Argument --at is not valid")?;
 
-    let ma = process_nodes_multiaddr(&cmd.at, &opts.state)?;
+    let ma = process_nodes_multiaddr(&cmd.at, &opts.state).await?;
     let alias = if at_rust_node {
         format!("forward_to_{}", cmd.relay_name)
     } else {

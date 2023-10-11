@@ -3,7 +3,7 @@ use colorful::Colorful;
 use tokio_retry::strategy::FixedInterval;
 use tracing::{info, trace, warn};
 
-use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::secure_channel::SecureChannelListenersList;
 use ockam_api::nodes::models::services::ServiceList;
@@ -30,9 +30,9 @@ const IS_NODE_UP_MAX_ATTEMPTS: usize = 60; // 3 seconds
 /// Show the details of a node
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    before_help = docs::before_help(PREVIEW_TAG),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ShowCommand {
     /// Name of the node to retrieve the details from
@@ -50,9 +50,9 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_name);
+    let node_name = get_node_name(&opts.state, &cmd.node_name).await;
     let mut node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
-    let is_default = check_default(&opts, &node_name);
+    let is_default = check_default(&opts, &node_name).await?;
     print_query_status(&opts, &ctx, &node_name, &mut node, false, is_default).await?;
     Ok(())
 }
@@ -180,18 +180,13 @@ pub async fn print_query_status(
     is_default: bool,
 ) -> miette::Result<()> {
     let cli_state = opts.state.clone();
-    if !is_node_up(ctx, node_name, node, cli_state.clone(), wait_until_ready).await? {
-        let node_state = cli_state.nodes.get(node_name)?;
-        let node_port = node_state
-            .config()
-            .setup()
-            .api_transport()
-            .ok()
-            .map(|listener| listener.addr.port());
+    let node_info = cli_state.get_node(node_name).await?;
+    let node_port = node_info.api_transport_port();
 
+    if !is_node_up(ctx, node_name, node, cli_state.clone(), wait_until_ready).await? {
         // it is expected to not be able to open an arbitrary TCP connection on an authority node
         // so in that case we display an UP status
-        let is_authority_node = node_state.config().setup().authority_node.unwrap_or(false);
+        let is_authority_node = node_info.is_authority_node();
         print_node_info(
             opts,
             node_port,
@@ -223,14 +218,6 @@ pub async fn print_query_status(
 
         // Get list of outlets
         let outlets: OutletList = node.ask(ctx, api::list_outlets()).await?;
-
-        let node_state = cli_state.nodes.get(node_name)?;
-        let node_port = node_state
-            .config()
-            .setup()
-            .api_transport()
-            .ok()
-            .map(|listener| listener.addr.port());
 
         print_node_info(
             opts,
@@ -274,9 +261,8 @@ pub async fn is_node_up(
     let cli_state = cli_state.clone();
     let now = std::time::Instant::now();
     for timeout_duration in retries {
-        let node_state = cli_state.nodes.get(node_name)?;
         // The node is down if it has not stored its default tcp listener in its state file.
-        if node_state.config().setup().api_transport().is_err() {
+        if cli_state.is_node_api_transport_set(node_name).await? {
             trace!(%node_name, "node has not been initialized");
             tokio::time::sleep(timeout_duration).await;
             continue;

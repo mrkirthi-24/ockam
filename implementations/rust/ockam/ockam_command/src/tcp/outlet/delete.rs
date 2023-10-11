@@ -46,7 +46,7 @@ pub async fn run_impl(
         "Are you sure you want to delete this TCP outlet?",
     )? {
         let alias = cmd.alias.clone();
-        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node);
+        let node_name = get_node_name(&opts.state, &cmd.node_opts.at_node).await;
         let node_name = parse_node_name(&node_name)?;
         let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         node.tell(&ctx, Request::delete(format!("/node/outlet/{alias}")))

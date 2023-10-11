@@ -46,7 +46,7 @@ pub async fn run_impl(
         .confirmed_with_flag_or_prompt(cmd.yes, "Are you sure you want to delete this relay?")?
     {
         let relay_name = cmd.relay_name.clone();
-        let at = get_node_name(&opts.state, &cmd.at);
+        let at = get_node_name(&opts.state, &cmd.at).await;
         let node_name = parse_node_name(&at)?;
         let node = BackgroundNode::create(&ctx, &opts.state, &node_name).await?;
         node.tell(

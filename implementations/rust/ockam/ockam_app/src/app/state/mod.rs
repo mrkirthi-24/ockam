@@ -10,9 +10,7 @@ use tracing::{error, info, trace, warn};
 
 use ockam::Context;
 use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
-use ockam_api::cli_state::{
-    add_project_info_to_node_state, init_node_state, CliState, StateDirTrait, StateItemTrait,
-};
+use ockam_api::cli_state::{CliState, StateDirTrait, StateItemTrait};
 use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::Controller;
 use ockam_api::nodes::models::portal::OutletStatus;
@@ -273,7 +271,7 @@ pub(crate) async fn make_node_manager(
     ctx: Arc<Context>,
     cli_state: &CliState,
 ) -> miette::Result<InMemoryNode> {
-    init_node_state(cli_state, NODE_NAME, None, None).await?;
+    // init_node_state(cli_state, NODE_NAME, None, None).await?;
 
     let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
     let options = TcpListenerOptions::new();
@@ -282,19 +280,16 @@ pub(crate) async fn make_node_manager(
         .await
         .into_diagnostic()?;
 
-    add_project_info_to_node_state(NODE_NAME, cli_state, None).await?;
+    // add_project_info_to_node_state(NODE_NAME, cli_state, None).await?;
 
-    let node_state = cli_state.nodes.get(NODE_NAME)?;
-    node_state.set_setup(
-        &node_state.config().setup_mut().set_api_transport(
-            CreateTransportJson::new(
-                TransportType::Tcp,
-                TransportMode::Listen,
-                &listener.socket_address().to_string(),
-            )
-            .into_diagnostic()?,
-        ),
-    )?;
+    cli_state
+        .set_node_transport(
+            NODE_NAME,
+            TransportType::Tcp,
+            TransportMode::Listen,
+            listener.socket_address().to_string(),
+        )
+        .await?;
     let trust_context_config = TrustContextConfigBuilder::new(cli_state).build();
 
     let node_manager = InMemoryNode::new(
