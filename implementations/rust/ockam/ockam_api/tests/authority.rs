@@ -2,7 +2,7 @@ use ockam::identity::utils::now;
 use ockam::identity::{secure_channels, AttributesEntry, Identifier, SecureChannels};
 use ockam::AsyncTryClone;
 use ockam_api::authenticator::enrollment_tokens::Members;
-use ockam_api::authority_node::{Authority, Configuration};
+use ockam_api::authority_node::{Authority, Configuration, ATTESTED_BY_PREKNOWN};
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_api::cloud::AuthorityNode;
 use ockam_api::nodes::NodeManager;
@@ -106,7 +106,7 @@ async fn one_admin_test_api(ctx: &mut Context) -> Result<()> {
 
     assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
-    assert!(attrs.attested_by().is_none());
+    assert_eq!(attrs.attested_by(), Some("PREKNOWN".to_string()));
 
     // Trusted member cannot be deleted
     admin
@@ -164,11 +164,7 @@ async fn test_one_admin_one_member(ctx: &mut Context) -> Result<()> {
 
     let attrs = members.get(&member).unwrap();
 
-    assert_eq!(attrs.attrs().len(), 2);
-    assert_eq!(
-        attrs.attrs().get("trust_context_id".as_bytes()),
-        Some(&b"123456".to_vec())
-    );
+    assert_eq!(attrs.attrs().len(), 1);
     assert_eq!(
         attrs.attrs().get("key".as_bytes()),
         Some(&b"value".to_vec())
@@ -176,7 +172,7 @@ async fn test_one_admin_one_member(ctx: &mut Context) -> Result<()> {
 
     assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
-    assert_eq!(attrs.attested_by(), Some(admin.identifier.clone()));
+    assert_eq!(attrs.attested_by(), Some(admin.identifier.to_string()));
 
     admin
         .client
@@ -263,32 +259,24 @@ async fn two_admins_two_members_exist_in_one_global_scope(ctx: &mut Context) -> 
     assert!(members1.get(&admin1.identifier).is_some());
     assert!(members1.get(&admin2.identifier).is_some());
     let attrs = members1.get(&member1).unwrap();
-    assert_eq!(attrs.attrs().len(), 2);
-    assert_eq!(
-        attrs.attrs().get("trust_context_id".as_bytes()),
-        Some(&b"123456".to_vec())
-    );
+    assert_eq!(attrs.attrs().len(), 1);
     assert_eq!(
         attrs.attrs().get("key1".as_bytes()),
         Some(&b"value1".to_vec())
     );
     assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
-    assert_eq!(attrs.attested_by(), Some(admin1.identifier.clone()));
+    assert_eq!(attrs.attested_by(), Some(admin1.identifier.to_string()));
 
     let attrs = members1.get(&member2).unwrap();
-    assert_eq!(attrs.attrs().len(), 2);
-    assert_eq!(
-        attrs.attrs().get("trust_context_id".as_bytes()),
-        Some(&b"123456".to_vec())
-    );
+    assert_eq!(attrs.attrs().len(), 1);
     assert_eq!(
         attrs.attrs().get("key2".as_bytes()),
         Some(&b"value2".to_vec())
     );
     assert!(attrs.added().abs_diff(now) < 5.into());
     assert!(attrs.expires().is_none());
-    assert_eq!(attrs.attested_by(), Some(admin2.identifier.clone()));
+    assert_eq!(attrs.attested_by(), Some(admin2.identifier.to_string()));
 
     // Admin2 added Member2, but Admin1 can also delete Member2
     admin1
@@ -385,7 +373,6 @@ async fn setup(
 
     let mut attrs = BTreeMap::<Vec<u8>, Vec<u8>>::new();
     attrs.insert(b"ockam-role".to_vec(), b"enroller".to_vec());
-    attrs.insert(b"trust_context_id".to_vec(), b"123456".to_vec());
 
     for _ in 0..number_of_admins {
         let admin = secure_channels
@@ -396,7 +383,12 @@ async fn setup(
             .identifier()
             .clone();
 
-        let entry = AttributesEntry::new(attrs.clone(), now, None, None);
+        let entry = AttributesEntry::new(
+            attrs.clone(),
+            now,
+            None,
+            Some(ATTESTED_BY_PREKNOWN.to_string()),
+        );
         trusted_identities.insert(admin.clone(), entry);
 
         admin_ids.push(admin);
@@ -405,7 +397,6 @@ async fn setup(
     let mut configuration = default_configuration().await?;
 
     configuration.no_direct_authentication = false;
-
     configuration.trusted_identities = PreTrustedIdentities::Fixed(trusted_identities);
 
     authority_node::start_node(ctx, &configuration).await?;

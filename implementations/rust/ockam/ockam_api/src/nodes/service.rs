@@ -11,8 +11,8 @@ use minicbor::{Decoder, Encode};
 
 pub use node_identities::*;
 use ockam::identity::models::CredentialAndPurposeKey;
+use ockam::identity::CredentialsRetriever;
 use ockam::identity::Vault;
-use ockam::identity::{CredentialsRetriever, TrustContext};
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::identity::{Identities, IdentitiesRepository, IdentityAttributesReader};
 use ockam::{
@@ -95,7 +95,7 @@ pub struct NodeManager {
     enable_credential_checks: bool,
     identifier: Identifier,
     pub(crate) secure_channels: Arc<SecureChannels>,
-    trust_context: Option<TrustContext>,
+    authority_identifier: Option<Identifier>,
     credential_retriever: Option<Arc<dyn CredentialsRetriever>>,
     pub(crate) registry: Registry,
     policies: Arc<dyn PolicyStorage>,
@@ -218,25 +218,22 @@ impl NodeManager {
         &self,
         r: &Resource,
         a: &Action,
-        trust_context_id: Option<&str>,
+        authority: Option<Identifier>,
         custom_default: Option<&Expr>,
     ) -> Result<Arc<dyn IncomingAccessControl>> {
-        if let Some(tcid) = trust_context_id {
+        if let Some(authority) = authority {
             // Populate environment with known attributes:
             let mut env = Env::new();
             env.put("resource.id", str(r.as_str()));
             env.put("action.id", str(a.as_str()));
-            env.put("resource.trust_context_id", str(tcid));
+            env.put("resource.authority", str(authority.to_string()));
 
             // Check if a policy exists for (resource, action) and if not, then
             // create or use a default entry:
             if self.policies.get_policy(r, a).await?.is_none() {
                 let fallback = match custom_default {
                     Some(e) => e.clone(),
-                    None => eq([
-                        ident("resource.trust_context_id"),
-                        ident("subject.trust_context_id"),
-                    ]),
+                    None => eq([ident("resource.authority"), ident("subject.authority")]),
                 };
                 self.policies.set_policy(r, a, &fallback).await?
             }
@@ -253,10 +250,10 @@ impl NodeManager {
         }
     }
 
-    pub(crate) fn trust_context(&self) -> Result<&TrustContext> {
-        self.trust_context
+    pub(crate) fn authority_identifier(&self) -> Result<&Identifier> {
+        self.authority_identifier
             .as_ref()
-            .ok_or_else(|| ApiError::core("Trust context doesn't exist"))
+            .ok_or_else(|| ApiError::core("Authority Identifier doesn't exist"))
     }
 
     pub(crate) fn credential_retriever(&self) -> Result<Arc<dyn CredentialsRetriever>> {
@@ -392,7 +389,7 @@ impl NodeManager {
                     .is_ok(),
             identifier: node_state.config().identifier()?,
             secure_channels,
-            trust_context: None,
+            authority_identifier: None,
             credential_retriever: None,
             registry: Default::default(),
             policies,
@@ -411,13 +408,13 @@ impl NodeManager {
     }
 
     async fn configure_trust_context(&mut self, tc: &TrustContextConfig) -> Result<()> {
-        let (trust_context, credential_retriever) = tc
+        let (authority_identifier, credential_retriever) = tc
             .to_trust_context(
                 self.secure_channels.clone(),
                 Some(self.tcp_transport.async_try_clone().await?),
             )
             .await?;
-        self.trust_context = Some(trust_context);
+        self.authority_identifier = Some(authority_identifier);
         self.credential_retriever = credential_retriever;
 
         info!("NodeManager::configure_trust_context: trust context configured");

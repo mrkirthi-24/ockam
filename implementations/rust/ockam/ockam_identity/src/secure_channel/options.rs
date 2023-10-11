@@ -7,7 +7,7 @@ use ockam_core::{Address, OutgoingAccessControl, Result};
 use crate::models::CredentialAndPurposeKey;
 use crate::secure_channel::Addresses;
 use crate::{
-    CredentialsMemoryRetriever, CredentialsRetriever, IdentityError, TrustContext,
+    CredentialsMemoryRetriever, CredentialsRetriever, Identifier, IdentityError,
     TrustEveryonePolicy, TrustPolicy,
 };
 
@@ -23,7 +23,7 @@ pub struct SecureChannelOptions {
     pub(crate) flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
     // To verify other's party credentials
-    pub(crate) trust_context: Option<TrustContext>,
+    pub(crate) authority: Option<Identifier>,
     // To obtain our credentials
     pub(crate) credential_retriever: Option<Box<dyn CredentialsRetriever>>,
     pub(crate) timeout: Duration,
@@ -46,7 +46,7 @@ impl SecureChannelOptions {
         Self {
             flow_control_id: FlowControls::generate_flow_control_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
-            trust_context: None,
+            authority: None,
             credential_retriever: None,
             timeout: DEFAULT_TIMEOUT,
         }
@@ -80,8 +80,8 @@ impl SecureChannelOptions {
     }
 
     /// Sets trust context
-    pub fn with_trust_context(mut self, trust_context: TrustContext) -> Self {
-        self.trust_context = Some(trust_context);
+    pub fn with_authority(mut self, authority: Identifier) -> Self {
+        self.authority = Some(authority);
         self
     }
 
@@ -144,7 +144,7 @@ pub struct SecureChannelListenerOptions {
     pub(crate) flow_control_id: FlowControlId,
     pub(crate) trust_policy: Arc<dyn TrustPolicy>,
     // To verify other's party credentials
-    pub(crate) trust_context: Option<TrustContext>,
+    pub(crate) authority: Option<Identifier>,
     // To obtain our credentials
     pub(crate) credential_retriever: Option<Box<dyn CredentialsRetriever>>,
 }
@@ -165,7 +165,7 @@ impl SecureChannelListenerOptions {
             consumer: vec![],
             flow_control_id: FlowControls::generate_flow_control_id(),
             trust_policy: Arc::new(TrustEveryonePolicy),
-            trust_context: None,
+            authority: None,
             credential_retriever: None,
         }
     }
@@ -201,8 +201,8 @@ impl SecureChannelListenerOptions {
     }
 
     /// Sets trust context
-    pub fn with_trust_context(mut self, trust_context: TrustContext) -> Self {
-        self.trust_context = Some(trust_context);
+    pub fn with_authority(mut self, authority: Identifier) -> Self {
+        self.authority = Some(authority);
         self
     }
 

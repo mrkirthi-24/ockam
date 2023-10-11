@@ -1,8 +1,8 @@
 use minicbor::Decoder;
+use ockam::identity::secure_channel_required;
 use ockam::identity::utils::now;
 use ockam::identity::IdentitySecureChannelLocalInfo;
 use ockam::identity::OneTimeCode;
-use ockam::identity::{secure_channel_required, TRUST_CONTEXT_ID};
 use ockam::identity::{AttributesEntry, IdentityAttributesWriter};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
@@ -60,15 +60,17 @@ impl Worker for EnrollmentTokenAcceptor {
                     match token {
                         Ok(tkn) => {
                             //TODO: fixme:  unify use of hashmap vs btreemap
-                            let trust_context = self.0.trust_context.as_bytes().to_vec();
                             let attrs = tkn
                                 .attrs
                                 .iter()
                                 .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
-                                .chain([(TRUST_CONTEXT_ID.to_owned(), trust_context)].into_iter())
                                 .collect();
-                            let entry =
-                                AttributesEntry::new(attrs, now()?, None, Some(tkn.generated_by));
+                            let entry = AttributesEntry::new(
+                                attrs,
+                                now()?,
+                                None,
+                                Some(tkn.generated_by.to_string()),
+                            );
                             self.1.put_attributes(&from, entry).await?;
                             Response::ok(&req).to_vec()?
                         }

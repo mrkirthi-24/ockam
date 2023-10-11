@@ -3,7 +3,7 @@ use ockam::abac::AbacAccessControl;
 use ockam::identity::{CredentialsRetriever, OneTimeCode};
 use ockam::identity::{
     RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo, SecureChannelListenerOptions, SecureChannelOptions,
-    TrustContext, TrustMultiIdentifiersPolicy,
+    TrustMultiIdentifiersPolicy,
 };
 use ockam::remote::RemoteRelayOptions;
 use ockam::{node, Context, Result, TcpOutletOptions};
@@ -72,8 +72,6 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let project = import_project(project_information_path, node.identities()).await?;
     let tcp_project_session = multiaddr_to_route(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
 
-    // Create a trust context that will be used to authenticate credential exchanges
-    let trust_context = TrustContext::new("trust_context_id".to_string(), project.authority_identifier());
     let credential_retriever = RemoteCredentialsRetriever::new(
         node.secure_channels(),
         RemoteCredentialsRetrieverInfo::new(
@@ -101,7 +99,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let tcp_project_route = multiaddr_to_route(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
     let project_options = SecureChannelOptions::new()
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]))
-        .with_trust_context(trust_context.clone())
+        .with_authority(project.authority_identifier())
         .with_credential(credential.clone())?;
 
     // create a secure channel to the project first
@@ -123,7 +121,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         &control_plane,
         "untrusted",
         SecureChannelListenerOptions::new()
-            .with_trust_context(trust_context)
+            .with_authority(project.authority_identifier())
             .with_credential(credential)?,
     )
     .await?;

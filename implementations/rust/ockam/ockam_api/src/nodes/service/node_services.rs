@@ -91,13 +91,12 @@ impl NodeManager {
             return Err(ApiError::core("Echoer service exists at this address"));
         }
 
-        let maybe_trust_context_id = self.trust_context.as_ref().map(|c| c.id());
         let resource = Resource::assert_inline(addr.address());
         let ac = self
             .access_control(
                 &resource,
                 &actions::HANDLE_MESSAGE,
-                maybe_trust_context_id,
+                self.authority_identifier.clone(),
                 None,
             )
             .await?;
@@ -215,7 +214,7 @@ impl NodeManagerWorker {
             OutletManagerService::create(
                 context,
                 self.node_manager.secure_channels.clone(),
-                self.node_manager.trust_context()?.id(),
+                self.node_manager.authority_identifier()?.clone(),
                 default_secure_channel_listener_flow_control_id,
             )
             .await?;
@@ -306,7 +305,7 @@ impl NodeManagerWorker {
             OutletManagerService::create(
                 context,
                 self.node_manager.secure_channels.clone(),
-                self.node_manager.trust_context()?.id(),
+                self.node_manager.authority_identifier()?.clone(),
                 default_secure_channel_listener_flow_control_id,
             )
             .await?;
@@ -322,17 +321,17 @@ impl NodeManagerWorker {
             )
             .await?;
 
-        let trust_context_id;
+        let authority_identifier;
         let secure_channels;
         {
-            trust_context_id = self.node_manager.trust_context()?.id().to_string();
+            authority_identifier = self.node_manager.authority_identifier()?.clone();
             secure_channels = self.node_manager.secure_channels.clone();
         }
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             ConsumerNodeAddr::Direct(consumer_route.clone()),
-            trust_context_id,
+            authority_identifier.to_string(),
         );
 
         let inlet_controller = KafkaInletController::new(
@@ -458,10 +457,10 @@ impl NodeManagerWorker {
             outlet_node_multiaddr.to_string()
         );
 
-        let trust_context_id;
+        let authority_identifier;
         let secure_channels;
         {
-            trust_context_id = self.node_manager.trust_context()?.id().to_string();
+            authority_identifier = self.node_manager.authority_identifier()?.clone();
             secure_channels = self.node_manager.secure_channels.clone();
 
             if let Some(project) = outlet_node_multiaddr.first().and_then(|value| {
@@ -486,7 +485,7 @@ impl NodeManagerWorker {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             ConsumerNodeAddr::Relay(outlet_node_multiaddr.clone()),
-            trust_context_id,
+            authority_identifier.to_string(),
         );
 
         let inlet_controller = KafkaInletController::new(

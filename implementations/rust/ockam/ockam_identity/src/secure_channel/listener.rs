@@ -91,7 +91,7 @@ impl Worker for IdentityChannelListener {
             self.options.trust_policy.clone(),
             access_control.decryptor_outgoing_access_control,
             credentials,
-            self.options.trust_context.clone(),
+            self.options.authority.clone(),
             None,
             None,
             Role::Responder,

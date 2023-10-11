@@ -374,8 +374,8 @@ impl NodeManager {
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
-        let options = match self.trust_context.clone() {
-            Some(trust_context) => options.with_trust_context(trust_context),
+        let options = match self.authority_identifier.clone() {
+            Some(authority_identifier) => options.with_authority(authority_identifier),
             None => options,
         };
 
@@ -438,8 +438,8 @@ impl NodeManager {
             None => options.with_trust_policy(TrustEveryonePolicy),
         };
 
-        let options = if let Ok(trust_context) = self.trust_context() {
-            options.with_trust_context(trust_context.clone())
+        let options = if let Ok(authority_identifier) = self.authority_identifier() {
+            options.with_authority(authority_identifier.clone())
         } else {
             options
         };

@@ -1,6 +1,6 @@
 use minicbor::Decoder;
+use ockam::identity::secure_channel_required;
 use ockam::identity::utils::now;
-use ockam::identity::{secure_channel_required, TRUST_CONTEXT_ID};
 use ockam::identity::{AttributesEntry, IdentityAttributesReader, IdentityAttributesWriter};
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{Method, RequestHeader, Response};
@@ -13,19 +13,16 @@ use tracing::trace;
 use crate::authenticator::direct::types::AddMember;
 
 pub struct DirectAuthenticator {
-    trust_context: String,
     attributes_writer: Arc<dyn IdentityAttributesWriter>,
     attributes_reader: Arc<dyn IdentityAttributesReader>,
 }
 
 impl DirectAuthenticator {
     pub async fn new(
-        trust_context: String,
         attributes_writer: Arc<dyn IdentityAttributesWriter>,
         attributes_reader: Arc<dyn IdentityAttributesReader>,
     ) -> Result<Self> {
         Ok(Self {
-            trust_context,
             attributes_writer,
             attributes_reader,
         })
@@ -37,18 +34,16 @@ impl DirectAuthenticator {
         id: &Identifier,
         attrs: &HashMap<CowStr<'a>, CowStr<'a>>,
     ) -> Result<()> {
+        if attrs.is_empty() {
+            panic!();
+        }
+
         let auth_attrs = attrs
             .iter()
             .map(|(k, v)| (k.as_bytes().to_vec(), v.as_bytes().to_vec()))
-            .chain(
-                [(
-                    TRUST_CONTEXT_ID.to_owned(),
-                    self.trust_context.as_bytes().to_vec(),
-                )]
-                .into_iter(),
-            )
             .collect();
-        let entry = AttributesEntry::new(auth_attrs, now()?, None, Some(enroller.clone()));
+
+        let entry = AttributesEntry::new(auth_attrs, now()?, None, Some(enroller.to_string()));
         self.attributes_writer.put_attributes(id, entry).await
     }
 

@@ -376,7 +376,7 @@ pub mod test_utils {
     use ockam::identity::storage::InMemoryStorage;
     use ockam::identity::utils::AttributesBuilder;
     use ockam::identity::{Identifier, Identity, MAX_CREDENTIAL_VALIDITY};
-    use ockam::identity::{SecureChannels, PROJECT_MEMBER_SCHEMA, TRUST_CONTEXT_ID};
+    use ockam::identity::{SecureChannels, PROJECT_MEMBER_SCHEMA};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
     use ockam_core::flow_control::FlowControls;
@@ -447,9 +447,7 @@ pub mod test_utils {
 
         let exported_identity = identity.export()?;
 
-        let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA)
-            .with_attribute(TRUST_CONTEXT_ID.to_vec(), b"test_trust_context_id".to_vec())
-            .build();
+        let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA).build();
 
         let credential = secure_channels
             .identities()
@@ -480,15 +478,14 @@ pub mod test_utils {
                 FlowControls::generate_flow_control_id(), // FIXME
                 tcp.async_try_clone().await?,
             ),
-            NodeManagerTrustOptions::new(Some(TrustContextConfig::new(
-                "test_trust_context".to_string(),
-                Some(TrustAuthorityConfig::new(
+            NodeManagerTrustOptions::new(Some(TrustContextConfig::new(Some(
+                TrustAuthorityConfig::new(
                     hex::encode(&identity.export().unwrap()),
                     Some(CredentialRetrieverConfig::FromMemory(minicbor::to_vec(
                         &credential,
                     )?)),
-                )),
-            ))),
+                ),
+            )))),
         )
         .await?;
         let node_manager = Arc::new(node_manager);

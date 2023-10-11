@@ -9,9 +9,7 @@ use tracing::{debug, warn};
 use crate::models::{
     ChangeHistory, CredentialAndPurposeKey, Identifier, PurposeKeyAttestation, PurposePublicKey,
 };
-use crate::{
-    Identities, Identity, IdentityError, SecureChannelTrustInfo, TrustContext, TrustPolicy,
-};
+use crate::{Identities, Identity, IdentityError, SecureChannelTrustInfo, TrustPolicy};
 
 /// Interface for a state machine in a key exchange protocol
 #[async_trait]
@@ -67,7 +65,7 @@ pub(super) struct CommonStateMachine {
     pub(super) purpose_key_attestation: PurposeKeyAttestation,
     pub(super) credentials: Vec<CredentialAndPurposeKey>,
     pub(super) trust_policy: Arc<dyn TrustPolicy>,
-    pub(super) trust_context: Option<TrustContext>,
+    pub(super) authority: Option<Identifier>, // TODO: Replace with ABAC
     their_identifier: Option<Identifier>,
 }
 
@@ -78,7 +76,7 @@ impl CommonStateMachine {
         purpose_key_attestation: PurposeKeyAttestation,
         credentials: Vec<CredentialAndPurposeKey>,
         trust_policy: Arc<dyn TrustPolicy>,
-        trust_context: Option<TrustContext>,
+        authority: Option<Identifier>,
     ) -> Self {
         Self {
             identities,
@@ -86,7 +84,7 @@ impl CommonStateMachine {
             purpose_key_attestation,
             credentials,
             trust_policy,
-            trust_context,
+            authority,
             their_identifier: None,
         }
     }
@@ -186,9 +184,9 @@ impl CommonStateMachine {
         their_identifier: &Identifier,
         credentials: Vec<CredentialAndPurposeKey>,
     ) -> Result<()> {
-        if let Some(trust_context) = &self.trust_context {
+        if let Some(authority) = &self.authority {
             debug!(
-                "Got a trust context to check the credentials. There are {} credentials to check",
+                "Got an Authority to check the credentials. There are {} credentials to check",
                 credentials.len()
             );
             for credential in &credentials {
@@ -198,7 +196,7 @@ impl CommonStateMachine {
                     .credentials_verification()
                     .receive_presented_credential(
                         their_identifier,
-                        &[trust_context.authority().clone()],
+                        &[authority.clone()],
                         credential,
                     )
                     .await;
@@ -212,8 +210,7 @@ impl CommonStateMachine {
                 }
             }
         } else if !credentials.is_empty() {
-            warn!("credentials were presented, but TrustContext is missing");
-            // we cannot validate credentials without a trust context
+            warn!("credentials were presented, but Authority is missing");
             return Err(IdentityError::SecureChannelVerificationFailedMissingTrustContext.into());
         };
 

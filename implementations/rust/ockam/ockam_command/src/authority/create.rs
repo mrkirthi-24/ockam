@@ -207,19 +207,13 @@ impl CreateCommand {
     /// Return a source of pre trusted identities and their attributes
     /// This is either a file which is used as the backend of the AttributesStorage
     /// or an explicit list of identities passed on the command line
-    pub(crate) fn trusted_identities(
-        &self,
-        authority_identifier: &Identifier,
-    ) -> Result<PreTrustedIdentities> {
+    pub(crate) fn trusted_identities(&self) -> Result<PreTrustedIdentities> {
         match (
             &self.reload_from_trusted_identities_file,
             &self.trusted_identities,
         ) {
             (Some(path), None) => Ok(PreTrustedIdentities::ReloadFrom(path.clone())),
-            (None, Some(trusted)) => Ok(PreTrustedIdentities::Fixed(trusted.to_map(
-                self.project_identifier.to_string(),
-                authority_identifier,
-            ))),
+            (None, Some(trusted)) => Ok(PreTrustedIdentities::Fixed(trusted.to_map())),
             _ => Err(crate::Error::new(
                 exitcode::CONFIG,
                 miette!("Exactly one of 'reload-from-trusted-identities-file' or 'trusted-identities' must be defined"),
@@ -328,7 +322,7 @@ async fn start_authority_node(
             ),
     )?;
 
-    let trusted_identities = cmd.trusted_identities(&identifier)?;
+    let trusted_identities = cmd.trusted_identities()?;
 
     let configuration = authority_node::Configuration {
         identifier,
@@ -371,17 +365,11 @@ mod tests {
         let identity1 = Identifier::try_from("Ie86be15e83d1c93e24dd1967010b01b6df491b45").unwrap();
         let identity2 = Identifier::try_from("I6c20e814b56579306f55c64e8747e6c1b4a53d9a").unwrap();
 
-        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\", \"trust_context_id\": \"1\"}}, \"{identity2}\": {{\"trust_context_id\" : \"1\", \"ockam-role\" : \"enroller\"}}}}");
+        let trusted = format!("{{\"{identity1}\": {{\"name\": \"value\"}}, \"{identity2}\": {{\"ockam-role\" : \"enroller\"}}}}");
         let actual = parse_trusted_identities(trusted.as_str()).unwrap();
 
-        let attributes1 = HashMap::from([
-            ("name".into(), "value".into()),
-            ("trust_context_id".into(), "1".into()),
-        ]);
-        let attributes2 = HashMap::from([
-            ("trust_context_id".into(), "1".into()),
-            ("ockam-role".into(), "enroller".into()),
-        ]);
+        let attributes1 = HashMap::from([("name".into(), "value".into())]);
+        let attributes2 = HashMap::from([("ockam-role".into(), "enroller".into())]);
         let expected = vec![
             TrustedIdentity::new(&identity2, &attributes2),
             TrustedIdentity::new(&identity1, &attributes1),
@@ -404,17 +392,12 @@ impl TrustedIdentities {
     /// Return a map from Identifier to AttributesEntry and:
     ///   - add the project identifier as an attribute
     ///   - use the authority identifier an the attributes issuer
-    pub(crate) fn to_map(
-        &self,
-        project_identifier: String,
-        authority_identifier: &Identifier,
-    ) -> HashMap<Identifier, AttributesEntry> {
-        HashMap::from_iter(self.trusted_identities().iter().map(|t| {
-            (
-                t.identifier(),
-                t.attributes_entry(project_identifier.clone(), authority_identifier),
-            )
-        }))
+    pub(crate) fn to_map(&self) -> HashMap<Identifier, AttributesEntry> {
+        HashMap::from_iter(
+            self.trusted_identities()
+                .iter()
+                .map(|t| (t.identifier(), t.attributes_entry())),
+        )
     }
 }
 

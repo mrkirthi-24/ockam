@@ -72,7 +72,6 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         identities.repository(),
         identities.credentials(),
         auth_identity.identifier(),
-        "project42".into(),
     );
     ctx.start_worker(auth_worker_addr.clone(), auth).await?;
 
@@ -106,13 +105,6 @@ async fn credential(ctx: &mut Context) -> Result<()> {
             &credential,
         )
         .await?;
-    assert_eq!(
-        Some(&b"project42".to_vec().into()),
-        data.credential_data
-            .subject_attributes
-            .map
-            .get::<ByteSlice>(b"trust_context_id".as_slice().into())
-    );
     assert_eq!(
         Some(&b"value".to_vec().into()),
         data.credential_data

@@ -9,7 +9,7 @@ use ockam::identity::{
     IdentityAttributesReader, IdentityAttributesWriter, SecureChannelListenerOptions,
     SecureChannels, TrustEveryonePolicy,
 };
-use ockam_abac::expr::{and, eq, ident, str};
+use ockam_abac::expr::{and, eq, ident, or, str};
 use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
@@ -24,6 +24,10 @@ use crate::authority_node::Configuration;
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::echoer::Echoer;
 use crate::{actions, DefaultAddress};
+
+/// Value used for `attested_by` field when the given attributes where pre-known by providing
+/// as a startup configuration in some way.
+pub const ATTESTED_BY_PREKNOWN: &str = "PREKNOWN";
 
 /// This struct represents an Authority, which is an
 /// Identity which other identities trust to authenticate attributes
@@ -119,7 +123,6 @@ impl Authority {
         }
 
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
-            configuration.project_identifier(),
             self.attributes_writer(),
             self.attributes_reader(),
         )
@@ -147,10 +150,8 @@ impl Authority {
             return Ok(());
         }
 
-        let (issuer, acceptor) = EnrollmentTokenAuthenticator::new_worker_pair(
-            configuration.project_identifier(),
-            self.attributes_writer(),
-        );
+        let (issuer, acceptor) =
+            EnrollmentTokenAuthenticator::new_worker_pair(self.attributes_writer());
 
         // start an enrollment token issuer with an abac policy checking that
         // the caller is an enroller for the authority project
@@ -195,7 +196,6 @@ impl Authority {
             self.secure_channels.identities().repository(),
             self.secure_channels.identities().credentials(),
             &self.identifier,
-            configuration.project_identifier(),
         );
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
@@ -345,28 +345,24 @@ impl Authority {
         address: String,
         enroller_check: EnrollerCheck,
     ) -> Arc<AbacAccessControl> {
-        // create an ABAC policy to only allow messages having
-        // the same project id as the authority
+        // Check if our Authority equals to the Authority that attested subject's attributes
+        let rule1 = eq([ident("resource.authority"), ident("subject.authority")]);
+        // Check if subject's attributes were pre-known by configuration
+        let rule2 = eq([str(ATTESTED_BY_PREKNOWN), ident("subject.authority")]);
+
+        let rule = or([rule1, rule2]);
+
         let rule = match enroller_check {
-            EnrollerOnly => and([
-                eq([
-                    ident("resource.trust_context_id"),
-                    ident("subject.trust_context_id"),
-                ]),
-                eq([ident("subject.ockam-role"), str("enroller")]),
-            ]),
-            AnyMember => eq([
-                ident("resource.trust_context_id"),
-                ident("subject.trust_context_id"),
-            ]),
+            EnrollerOnly => and([rule, eq([ident("subject.ockam-role"), str("enroller")])]),
+            AnyMember => rule,
         };
 
         let mut env = Env::new();
         env.put("resource.id", str(address.as_str()));
         env.put("action.id", str(actions::HANDLE_MESSAGE.as_str()));
         env.put(
-            "resource.trust_context_id",
-            str(configuration.project_identifier.clone()),
+            "resource.authority",
+            str(configuration.identifier.to_string()),
         );
         let abac = Arc::new(AbacAccessControl::new(
             self.identities_repository(),

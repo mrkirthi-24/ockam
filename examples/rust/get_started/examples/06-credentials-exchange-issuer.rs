@@ -47,12 +47,8 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // For a different application this attested attribute set can be different and
     // distinct for each identifier, but for this example we'll keep things simple.
-    let credential_issuer = CredentialsIssuer::new(
-        node.identities().repository(),
-        node.credentials(),
-        issuer.identifier(),
-        "trust_context".into(),
-    );
+    let credential_issuer =
+        CredentialsIssuer::new(node.identities().repository(), node.credentials(), issuer.identifier());
     for identifier in known_identifiers.iter() {
         node.identities()
             .repository()
