@@ -8,7 +8,7 @@ use ockam::identity::models::ChangeHistory;
 use ockam::identity::utils::now;
 use ockam::identity::{
     AttributesEntry, Identifier, IdentitiesReader, IdentitiesRepository, IdentitiesWriter,
-    Identity, IdentityAttributesReader, IdentityAttributesWriter,
+    Identity, IdentityAttributesReader, IdentityAttributesWriter, NamedIdentity,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
@@ -105,12 +105,52 @@ impl IdentitiesReader for BootstrapedIdentityStore {
     async fn get_change_history(&self, identifier: &Identifier) -> Result<ChangeHistory> {
         self.repository.get_change_history(identifier).await
     }
+
+    async fn get_identifier_by_name(&self, name: &str) -> Result<Option<Identifier>> {
+        self.repository.get_identifier_by_name(name).await
+    }
+
+    async fn get_default_identifier(&self) -> Result<Option<Identifier>> {
+        self.repository.get_default_identifier().await
+    }
+
+    async fn get_named_identities(&self) -> Result<Vec<NamedIdentity>> {
+        self.repository.get_named_identities().await
+    }
+
+    async fn get_named_identity(&self, name: &str) -> Result<Option<NamedIdentity>> {
+        self.repository.get_named_identity(name).await
+    }
+
+    async fn get_default_named_identity(&self) -> Result<Option<NamedIdentity>> {
+        self.repository.get_default_named_identity().await
+    }
+
+    async fn get_default_identity_name(&self) -> Result<Option<String>> {
+        self.repository.get_default_identity_name().await
+    }
+
+    async fn is_default_identity_by_name(&self, name: &str) -> Result<bool> {
+        self.repository.is_default_identity_by_name(name).await
+    }
 }
 
 #[async_trait]
 impl IdentitiesWriter for BootstrapedIdentityStore {
-    async fn create_identity(&self, identity: &Identity, name: Option<&str>) -> Result<()> {
-        self.repository.create_identity(identity, name).await
+    async fn store_identity(&self, identity: &Identity) -> Result<()> {
+        self.repository.store_identity(identity).await
+    }
+
+    async fn name_identity(&self, identifier: &Identifier, name: &str) -> Result<()> {
+        self.repository.name_identity(identifier, name).await
+    }
+
+    async fn set_as_default(&self, identifier: &Identifier) -> Result<()> {
+        self.repository.set_as_default(identifier).await
+    }
+
+    async fn set_as_default_by_name(&self, name: &str) -> Result<()> {
+        self.repository.set_as_default_by_name(name).await
     }
 
     async fn update_identity(&self, identity: &Identity) -> Result<()> {

@@ -109,7 +109,19 @@ pub trait FromSqlxError<T> {
 
 impl<T> FromSqlxError<T> for core::result::Result<T, sqlx::error::Error> {
     fn into_core(self) -> Result<T> {
-        self.map_err(|e| Error::new(Origin::Application, Kind::Io, e))
+        self.map_err(|e| Error::new(Origin::Api, Kind::Internal, e.to_string()))
+    }
+}
+
+/// This trait provides some syntax to shorten queries execution returning ()
+pub trait ToVoid<T> {
+    /// Return a () value
+    fn void(self) -> Result<()>;
+}
+
+impl<T> ToVoid<T> for core::result::Result<T, sqlx::error::Error> {
+    fn void(self) -> Result<()> {
+        self.map(|_| ()).into_core()
     }
 }
 

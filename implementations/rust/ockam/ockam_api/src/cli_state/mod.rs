@@ -1,21 +1,18 @@
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 
 use miette::Diagnostic;
 use rand::random;
 use thiserror::Error;
 
-use ockam::identity::{
-    Identifier, Identities, IdentitiesRepository, IdentitiesSqlxDatabase, Identity, Vault,
-};
+use ockam::identity::{Identities, IdentitiesRepository, IdentitiesSqlxDatabase, Vault};
 use ockam::SqlxDatabase;
 use ockam_abac::{PoliciesRepository, PolicySqlxDatabase};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env_with_default;
-use ockam_multiaddr::MultiAddr;
 use ockam_node::Executor;
 
 pub use crate::cli_state::credentials::*;
+use crate::cli_state::enrollment::{EnrollmentsRepository, EnrollmentsSqlxDatabase};
 pub use crate::cli_state::nodes::*;
 pub use crate::cli_state::projects::*;
 pub use crate::cli_state::spaces::*;
@@ -23,10 +20,10 @@ pub use crate::cli_state::traits::*;
 pub use crate::cli_state::trust_contexts::*;
 use crate::cli_state::user_info::UsersInfoState;
 pub use crate::cli_state::vaults::*;
-use crate::config::lookup::{InternetAddress, ProjectLookup};
-use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 
 pub mod credentials;
+pub mod enrollment;
+pub mod identities;
 pub mod nodes;
 pub mod projects;
 pub mod spaces;
@@ -150,24 +147,22 @@ impl CliState {
         )))
     }
 
+    async fn enrollment_repository(&self) -> Result<Arc<dyn EnrollmentsRepository>> {
+        Ok(Arc::new(EnrollmentsSqlxDatabase::new(
+            self.database().await?,
+        )))
+    }
+
     pub async fn get_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
         todo!("get_identities")
-    }
-
-    pub async fn create_identity(&self, name: &str) -> Result<Identifier> {
-        todo!("create_identity")
-    }
-
-    pub async fn create_identity_with_random_name(&self) -> Result<Identifier> {
-        self.create_identity(&self::random_name()).await
     }
 
     pub async fn get_vault(&self, vault_name: &str) -> Result<Vault> {
         todo!("get_vault_by_name")
     }
 
-    pub async fn get_node_vault(&self, node_name: &str) -> Result<Vault> {
-        todo!("get_node_vault")
+    pub async fn get_default_vault(&self) -> Result<Vault> {
+        todo!("get default vault")
     }
 
     pub async fn policies_repository(&self) -> Result<Arc<dyn PoliciesRepository>> {
@@ -182,178 +177,6 @@ impl CliState {
         self.dir.join("database.sqlite3")
     }
 
-    pub async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
-        todo!("implement get_node_identifier")
-    }
-
-    pub async fn get_node_identifier(&self, node_name: &str) -> Result<Identifier> {
-        todo!("implement get_node_identifier")
-    }
-
-    pub async fn get_node_identifier_name(&self, node_name: &str) -> Result<Option<String>> {
-        todo!("implement get_node_identifier_name")
-    }
-
-    pub async fn get_identifier_by_name(&self, identifier_name: &str) -> Result<Identifier> {
-        todo!("implement get_node_identifier")
-    }
-
-    pub async fn get_named_identities(&self) -> Result<Vec<NamedIdentity>> {
-        todo!("implement get_node_identifier")
-    }
-
-    pub async fn get_identifier_by_optional_name(
-        &self,
-        identity_name: &Option<String>,
-    ) -> Result<Identifier> {
-        todo!("implement get_identifier_by_optional_name")
-    }
-
-    pub async fn get_identifier_by_optional_name_or_create_identity(
-        &self,
-        identity_name: &Option<String>,
-    ) -> Result<Identifier> {
-        todo!("implement get_identifier_by_optional_name")
-    }
-
-    pub async fn get_identity_by_optional_name(
-        &self,
-        identity_name: &Option<String>,
-    ) -> Result<Identity> {
-        todo!("implement get_node_identifier")
-    }
-
-    pub async fn is_default_identity_enrolled(&self) -> Result<bool> {
-        todo!("implement is_default_identity_enrolled")
-    }
-
-    /// Return true if there is an identity with that name and it is the default one
-    pub async fn is_default_identity_by_name(&self, name: &str) -> Result<bool> {
-        todo!("implement is_default_identity_by_name")
-    }
-
-    pub async fn get_identity_enrollments(
-        &self,
-        enrollment_status: EnrollmentStatus,
-    ) -> Result<Vec<IdentityEnrollment>> {
-        todo!("implement is_default_identity_enrolled")
-    }
-
-    /// Return the name of the default identity
-    pub async fn get_default_identity_name(&self) -> Result<String> {
-        todo!("implement the retrieval of a default identity name")
-        // self
-        //     .identities
-        //     .default()
-        //     .map(|i| i.name().to_string())
-        //     .unwrap_or_else(|_| "default".to_string())
-    }
-
-    /// Return the name of the default identity
-    pub async fn get_identity_name_or_default(&self, name: &Option<String>) -> Result<String> {
-        todo!("implement the retrieval of a default identity name")
-        // self
-        //     .identities
-        //     .default()
-        //     .map(|i| i.name().to_string())
-        //     .unwrap_or_else(|_| "default".to_string())
-    }
-
-    /// Return the name of the default identity
-    pub async fn set_as_default_identity(&self, name: &str) -> Result<()> {
-        todo!("implement set_at_default_identity")
-        // self
-        //     .identities
-        //     .default()
-        //     .map(|i| i.name().to_string())
-        //     .unwrap_or_else(|_| "default".to_string())
-    }
-
-    /// Return an identity by name
-    pub async fn get_identity_by_name(&self, name: Option<&str>) -> Result<Identity> {
-        todo!("implement the retrieval of a default identity name")
-        // self
-        //     .identities
-        //     .default()
-        //     .map(|i| i.name().to_string())
-        //     .unwrap_or_else(|_| "default".to_string())
-    }
-
-    /// Delete an identity by name
-    pub async fn delete_identity_by_name(&self, name: &str) -> Result<()> {
-        todo!("implement the retrieval of a default identity name")
-        // self
-        //     .identities
-        //     .default()
-        //     .map(|i| i.name().to_string())
-        //     .unwrap_or_else(|_| "default".to_string())
-    }
-
-    pub async fn create_node(&self, node_name: &str) -> Result<NodeInfo> {
-        todo!("create_node")
-    }
-
-    pub async fn get_node(&self, node_name: &str) -> Result<NodeInfo> {
-        todo!("get_node_by_name")
-    }
-
-    pub async fn is_node_running(&self, node_name: &str) -> Result<bool> {
-        todo!("is_node_running")
-    }
-
-    pub fn stdout_logs(&self, node_name: &str) -> PathBuf {
-        todo!("stdout_logs")
-    }
-
-    pub async fn get_node_project(&self, node_name: &str) -> Result<Option<ProjectConfig>> {
-        todo!("get_node_project")
-    }
-
-    pub async fn kill_node(&self, node_name: &str, force: bool) -> Result<()> {
-        todo!("kill_node")
-    }
-
-    pub async fn delete_node_sigkill(&self, node_name: &str, force: bool) -> Result<()> {
-        todo!("delete_sigkill")
-    }
-
-    pub async fn delete_node(&self, node_name: &str) -> Result<()> {
-        todo!("get_node_by_name")
-    }
-
-    pub async fn delete_default_node(&self) -> Result<()> {
-        todo!("get_node_by_name")
-    }
-
-    pub async fn get_default_node(&self) -> Result<NodeInfo> {
-        todo!("get_default_node")
-    }
-
-    pub async fn is_default_node(&self, name: &str) -> Result<bool> {
-        todo!("is_default_node")
-    }
-
-    pub async fn set_default_node(&self, name: &str) -> Result<bool> {
-        todo!("set_default_node")
-    }
-
-    pub async fn set_node_transport(
-        &self,
-        node_name: &str,
-        transport_type: TransportType,
-        transport_mode: TransportMode,
-        address: String,
-    ) -> Result<()> {
-        todo!("set_node_transport")
-    }
-
-    pub async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
-        todo!("set_node_pid")
-    }
-
-    pub async fn is_node_api_transport_set(&self, node_name: &str) -> Result<bool> {
-        todo!("is_node_api_transport_set")
-    }
     /// fault identity but if it has not been initialized yet
     // /// then initialize it
     // pub async fn initialize_identity_if_default(opts: &CommandGlobalOpts, name: &Option<String>) {
@@ -363,15 +186,6 @@ impl CliState {
     //     }
     // }
     //
-    // /// Return the name if identity_name is Some otherwise return the name of the default identity
-    // pub async fn get_identity_name(
-    //     cli_state: &CliState,
-    //     identity_name: &Option<String>,
-    // ) -> Result<String> {
-    //     Ok(identity_name
-    //         .clone()
-    //         .unwrap_or_else(|| async { cli_state.get_default_identity_name().await? }))
-    // }
     //
     // /// Create the default identity
     // fn create_default_identity(opts: &CommandGlobalOpts) {
@@ -527,7 +341,7 @@ impl CliState {
     /// Return true if the user is enrolled.
     /// At the moment this check only verifies that there is a default project.
     /// This project should be the project that is created at the end of the enrollment procedure
-    pub async fn is_enrolled(&self) -> Result<bool> {
+    pub async fn is_enrolled(&self) -> miette::Result<bool> {
         if !self.is_default_identity_enrolled().await? {
             return Ok(false);
         }
@@ -537,7 +351,7 @@ impl CliState {
             let message =
                 "There should be a default space set for the current user. Please re-enroll";
             error!("{}", message);
-            return Err(message.into());
+            return Err(CliStateError::from(message).into());
         }
 
         let default_project_exists = self.projects.default().is_ok();
@@ -545,124 +359,10 @@ impl CliState {
             let message =
                 "There should be a default project set for the current user. Please re-enroll";
             error!("{}", message);
-            return Err(message.into());
+            return Err(CliStateError::from(message).into());
         }
 
         Ok(true)
-    }
-}
-
-pub enum EnrollmentStatus {
-    Enrolled,
-    Any,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct IdentityEnrollment {
-    identifier: Identifier,
-    name: Option<String>,
-    enrolled_at: Option<Enrollment>,
-}
-
-impl IdentityEnrollment {
-    pub fn identifier(&self) -> Identifier {
-        self.identifier.clone()
-    }
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct Enrollment {
-    enrolled: bool,
-    enrolled_at: SystemTime,
-}
-
-pub struct NamedIdentity {
-    name: String,
-    identity: Identity,
-    is_default: bool,
-}
-
-impl NamedIdentity {
-    pub fn name(&self) -> String {
-        self.name.clone()
-    }
-
-    pub fn identifier(&self) -> Identifier {
-        self.identity.identifier().clone()
-    }
-
-    pub fn is_default(&self) -> bool {
-        self.is_default
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct NodeInfo {
-    name: String,
-    identifier: Identifier,
-    verbosity: u8,
-    is_authority_node: bool,
-    project: Option<ProjectLookup>,
-    api_transport: Option<CreateTransportJson>,
-    default_vault_name: String,
-    pid: Option<u32>,
-    is_default: bool,
-    stdout_log: PathBuf,
-    stderr_log: PathBuf,
-}
-
-impl NodeInfo {
-    pub fn name(&self) -> String {
-        self.name.clone()
-    }
-
-    pub fn identifier(&self) -> Identifier {
-        self.identifier.clone()
-    }
-
-    pub fn is_default(&self) -> bool {
-        self.is_default
-    }
-
-    pub fn pid(&self) -> Option<u32> {
-        self.pid.clone()
-    }
-
-    pub fn is_running(&self) -> bool {
-        self.pid.is_some()
-    }
-
-    pub fn verbosity(&self) -> u8 {
-        self.verbosity
-    }
-
-    pub fn api_transport_port(&self) -> Option<u16> {
-        self.api_transport.as_ref().map(|t| t.addr.port())
-    }
-
-    pub fn api_transport_address(&self) -> Option<InternetAddress> {
-        self.api_transport.as_ref().map(|t| t.addr.clone())
-    }
-
-    pub fn api_transport_multiaddr(&self) -> Result<MultiAddr> {
-        self.api_transport
-            .as_ref()
-            .ok_or(CliStateError::InvalidData(
-                "no transport has been set on the node".to_string(),
-            ))
-            .and_then(|t| t.maddr().map_err(|e| CliStateError::Ockam(e)))
-    }
-
-    pub fn is_authority_node(&self) -> bool {
-        self.is_authority_node
-    }
-
-    pub fn stdout_log(&self) -> PathBuf {
-        self.stdout_log.clone()
-    }
-
-    pub fn stderr_log(&self) -> PathBuf {
-        self.stderr_log.clone()
     }
 }
 

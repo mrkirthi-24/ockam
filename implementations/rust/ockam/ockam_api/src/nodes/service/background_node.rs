@@ -1,14 +1,17 @@
-use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
-use crate::nodes::NODEMANAGER_ADDR;
+use std::sync::Arc;
+use std::time::Duration;
+
 use miette::IntoDiagnostic;
 use minicbor::{Decode, Encode};
+
 use ockam_core::api::{Reply, Request};
 use ockam_core::{AsyncTryClone, Route};
 use ockam_node::api::Client;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpTransport};
-use std::sync::Arc;
-use std::time::Duration;
+
+use crate::cli_state::CliState;
+use crate::nodes::NODEMANAGER_ADDR;
 
 /// This struct represents a node that has been started
 /// on the same machine with a given node name

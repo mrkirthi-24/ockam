@@ -1,7 +1,9 @@
+use std::net::SocketAddr;
+
 use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
 use sqlx::{Database, Encode, Sqlite, Type};
-use std::net::SocketAddr;
+use time::OffsetDateTime;
 
 /// This enum represents the set of types that we currently support in our database
 /// Since we support only Sqlite at the moment, those types are close to what is supported by Sqlite:
@@ -16,10 +18,11 @@ use std::net::SocketAddr;
 pub enum SqlxType {
     /// This type represents text in the database
     Text(String),
-    /// This type arbitrary bytes in the database
+    /// This type represents arbitrary bytes in the database
     Blob(Vec<u8>),
-    /// This type arbitrary bytes in the database
+    /// This type represents ints, signed or unsigned
     Integer(i64),
+    /// This type represents floats
     #[allow(unused)]
     Real(f64),
 }
@@ -69,6 +72,7 @@ impl Encode<'_, Sqlite> for SqlxType {
 ///```
 ///
 pub trait ToSqlxType {
+    // Return the appropriate sql type
     fn to_sql(&self) -> SqlxType;
 }
 
@@ -84,9 +88,25 @@ impl ToSqlxType for &str {
     }
 }
 
+impl ToSqlxType for bool {
+    fn to_sql(&self) -> SqlxType {
+        if *self {
+            1.to_sql()
+        } else {
+            0.to_sql()
+        }
+    }
+}
+
 impl ToSqlxType for u64 {
     fn to_sql(&self) -> SqlxType {
         SqlxType::Integer(*self as i64)
+    }
+}
+
+impl ToSqlxType for OffsetDateTime {
+    fn to_sql(&self) -> SqlxType {
+        SqlxType::Integer(self.unix_timestamp())
     }
 }
 

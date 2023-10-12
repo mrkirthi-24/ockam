@@ -1,10 +1,11 @@
 //! Configuration files used by the ockam CLI
 
-use crate::cli_state::{CliStateError, CredentialState, StateItemTrait};
-use crate::cloud::project::Project;
-use crate::config::{lookup::ConfigLookup, ConfigValues};
-use crate::error::ApiError;
-use crate::{cli_state, multiaddr_to_transport_route, DefaultAddress, HexByteVec};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
+
 use ockam::identity::{
     identities, AuthorityService, CredentialsMemoryRetriever, CredentialsRetriever, Identifier,
     Identities, Identity, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo,
@@ -14,10 +15,12 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::TcpTransport;
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::path::PathBuf;
-use std::str::FromStr;
+
+use crate::cli_state::{CliStateError, CredentialState, StateItemTrait};
+use crate::cloud::project::Project;
+use crate::config::{lookup::ConfigLookup, ConfigValues};
+use crate::error::ApiError;
+use crate::{multiaddr_to_transport_route, DefaultAddress, HexByteVec};
 
 use super::lookup::ProjectLookup;
 

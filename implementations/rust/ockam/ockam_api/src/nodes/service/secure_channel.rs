@@ -7,7 +7,7 @@ use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::identity::Vault;
 use ockam::identity::{
-    Identifier, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
+    Identifier, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
 };
 use ockam::identity::{SecureChannel, SecureChannelListener};
@@ -79,7 +79,7 @@ impl NodeManagerWorker {
                 return Err(Response::bad_request(
                     req,
                     &format!("Incorrect multi-address {}", addr),
-                ))
+                ));
             }
         };
         let sc = self

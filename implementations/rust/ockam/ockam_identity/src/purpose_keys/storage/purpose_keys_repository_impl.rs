@@ -91,8 +91,11 @@ impl PurposeKeysReader for PurposeKeysSqlxDatabase {
 
 #[derive(FromRow)]
 pub(crate) struct PurposeKeyRow {
+    // The identifier who is using this key
     identifier: String,
+    // Purpose of the key (signing, encrypting, etc...)
     purpose: String,
+    // Attestation that this key is valid
     purpose_key_attestation: Vec<u8>,
 }
 

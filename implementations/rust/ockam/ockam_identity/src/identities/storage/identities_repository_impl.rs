@@ -7,12 +7,12 @@ use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 
-use crate::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType};
+use crate::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
 use crate::models::{ChangeHistory, Identifier};
 use crate::utils::now;
 use crate::{
     AttributesEntry, IdentitiesReader, IdentitiesRepository, IdentitiesWriter, Identity,
-    IdentityAttributesReader, IdentityAttributesWriter, TimestampInSeconds,
+    IdentityAttributesReader, IdentityAttributesWriter, NamedIdentity, TimestampInSeconds,
 };
 
 /// Implementation of `IdentitiesRepository` trait based on an underlying database
@@ -85,11 +85,7 @@ impl IdentityAttributesWriter for IdentitiesSqlxDatabase {
             .bind(entry.added().to_sql())
             .bind(entry.expires().map(|e| e.to_sql()))
             .bind(entry.attested_by().map(|e| e.to_sql()));
-        query
-            .execute(&self.database.pool)
-            .await
-            .map(|_| ())
-            .into_core()
+        query.execute(&self.database.pool).await.void()
     }
 
     /// Store an attribute name/value pair for a given identity
@@ -116,47 +112,65 @@ impl IdentityAttributesWriter for IdentitiesSqlxDatabase {
     async fn delete(&self, identity: &Identifier) -> Result<()> {
         let query =
             query("DELETE FROM identity_attributes WHERE identifier = ?").bind(identity.to_sql());
-        query
-            .execute(&self.database.pool)
-            .await
-            .map(|_| ())
-            .into_core()
+        query.execute(&self.database.pool).await.void()
     }
 }
 
 #[async_trait]
 impl IdentitiesWriter for IdentitiesSqlxDatabase {
-    async fn create_identity(&self, identity: &Identity, name: Option<&str>) -> Result<()> {
-        let query = query("INSERT INTO identity VALUES (?, ?, ?)")
+    async fn store_identity(&self, identity: &Identity) -> Result<()> {
+        let query = query("INSERT INTO identity VALUES (?, ?, NULL, ?)")
             .bind(identity.identifier().to_sql())
             .bind(identity.change_history().to_sql())
-            .bind(name.map(|n| n.to_sql()));
-        query
-            .execute(&self.database.pool)
-            .await
-            .map(|_| ())
-            .into_core()
+            .bind(false.to_sql());
+        query.execute(&self.database.pool).await.void()
+    }
+
+    async fn name_identity(&self, identifier: &Identifier, name: &str) -> Result<()> {
+        let query = query("UPDATE identity SET name = ? WHERE identifier = ?")
+            .bind(name.to_sql())
+            .bind(identifier.to_sql());
+        query.execute(&self.database.pool).await.void()
+    }
+
+    async fn set_as_default(&self, identifier: &Identifier) -> Result<()> {
+        let transaction = self.database.pool.acquire().await.into_core()?;
+        // set the identifier as the default one
+        let query1 = query("UPDATE identity SET is_default = ? WHERE identifier = ?")
+            .bind(true.to_sql())
+            .bind(identifier.to_sql());
+        query1.execute(&self.database.pool).await.void()?;
+
+        // set all the others as non-default
+        let query2 = query("UPDATE identity SET is_default = ? WHERE identifier <> ?")
+            .bind(false.to_sql())
+            .bind(identifier.to_sql());
+        query2.execute(&self.database.pool).await.void()?;
+        transaction.close().await.into_core()
+    }
+
+    async fn set_as_default_by_name(&self, name: &str) -> Result<()> {
+        let query = query("UPDATE identity SET is_default = ? WHERE name = ?")
+            .bind(true.to_sql())
+            .bind(name.to_sql());
+        query.execute(&self.database.pool).await.void()
     }
 
     async fn update_identity(&self, identity: &Identity) -> Result<()> {
         let query = query("UPDATE identity SET change_history = ? WHERE identifier = ?")
             .bind(identity.change_history().to_sql())
             .bind(identity.identifier().to_sql());
-        query
-            .execute(&self.database.pool)
-            .await
-            .map(|_| ())
-            .into_core()
+        query.execute(&self.database.pool).await.void()
     }
 
     async fn delete_identity(&self, identifier: &Identifier) -> Result<()> {
         let transaction = self.database.pool.acquire().await.into_core()?;
         let query1 = query("DELETE FROM identity where identifier=?").bind(identifier.to_sql());
-        let _ = query1.execute(&self.database.pool).await.into_core();
+        query1.execute(&self.database.pool).await.void()?;
 
         let query2 =
             query("DELETE FROM identity_attributes where identifier=?").bind(identifier.to_sql());
-        let _ = query2.execute(&self.database.pool).await.into_core();
+        query2.execute(&self.database.pool).await.void()?;
         transaction.close().await.into_core()?;
         Ok(())
     }
@@ -181,6 +195,66 @@ impl IdentitiesReader for IdentitiesSqlxDatabase {
             .await
             .into_core()?;
         row.map(|r| r.change_history()).transpose()
+    }
+
+    async fn get_identifier_by_name(&self, name: &str) -> Result<Option<Identifier>> {
+        let query = query_as("SELECT * FROM identity WHERE name=$1").bind(name.to_sql());
+        let row: Option<IdentityRow> = query
+            .fetch_optional(&self.database.pool)
+            .await
+            .into_core()?;
+        row.map(|r| r.identifier()).transpose()
+    }
+
+    async fn get_default_identifier(&self) -> Result<Option<Identifier>> {
+        let query = query_as("SELECT * FROM identity WHERE is_default=?").bind(true.to_sql());
+        let row: Option<IdentityRow> = query
+            .fetch_optional(&self.database.pool)
+            .await
+            .into_core()?;
+        row.map(|r| r.identifier()).transpose()
+    }
+
+    async fn get_named_identities(&self) -> Result<Vec<NamedIdentity>> {
+        let query = query_as("SELECT * FROM identity WHERE name=$1");
+        let row: Vec<IdentityRow> = query.fetch_all(&self.database.pool).await.into_core()?;
+        row.iter().map(|r| r.named_identity()).collect()
+    }
+
+    async fn get_named_identity(&self, name: &str) -> Result<Option<NamedIdentity>> {
+        let query = query_as("SELECT * FROM identity WHERE name=$1").bind(name.to_sql());
+        let row: Option<IdentityRow> = query
+            .fetch_optional(&self.database.pool)
+            .await
+            .into_core()?;
+        row.map(|r| r.named_identity()).transpose()
+    }
+
+    async fn get_default_named_identity(&self) -> Result<Option<NamedIdentity>> {
+        let query = query_as("SELECT * FROM identity WHERE is_default=$1").bind(true.to_sql());
+        let row: Option<IdentityRow> = query
+            .fetch_optional(&self.database.pool)
+            .await
+            .into_core()?;
+        row.map(|r| r.named_identity()).transpose()
+    }
+
+    async fn get_default_identity_name(&self) -> Result<Option<String>> {
+        let query = query_as("SELECT * FROM identity WHERE is_default=$1").bind(true.to_sql());
+        let row: Option<IdentityRow> = query
+            .fetch_optional(&self.database.pool)
+            .await
+            .into_core()?;
+        Ok(row.map(|r| r.name))
+    }
+
+    async fn is_default_identity_by_name(&self, name: &str) -> Result<bool> {
+        let query = query_as("SELECT is_default FROM identity WHERE name=$1").bind(name.to_sql());
+        let row: Option<IdentityRow> = query
+            .fetch_optional(&self.database.pool)
+            .await
+            .into_core()?;
+        Ok(row.map(|r| r.is_default).unwrap_or(false))
     }
 }
 
@@ -240,6 +314,8 @@ impl ToSqlxType for ChangeHistory {
 pub(crate) struct IdentityRow {
     identifier: String,
     change_history: Vec<u8>,
+    name: String,
+    is_default: bool,
 }
 
 impl IdentityRow {
@@ -249,6 +325,15 @@ impl IdentityRow {
 
     pub(crate) fn change_history(&self) -> Result<ChangeHistory> {
         ChangeHistory::import(self.change_history.as_slice())
+    }
+
+    pub(crate) fn named_identity(&self) -> Result<NamedIdentity> {
+        Ok(NamedIdentity::new(
+            self.identifier()?,
+            self.change_history()?,
+            self.name.clone(),
+            self.is_default,
+        ))
     }
 }
 
@@ -271,7 +356,7 @@ mod tests {
         let repository = create_repository(db_file.path()).await?;
 
         // store and retrieve or get an identity
-        repository.create_identity(&identity1, Some("name")).await?;
+        repository.store_identity(&identity1).await?;
 
         // the change history can be retrieved as an Option
         let result = repository
@@ -293,7 +378,31 @@ mod tests {
 
         let result = repository.get_change_history(&identity2.identifier()).await;
         assert!(result.is_err());
+        Ok(())
+    }
 
+    #[tokio::test]
+    async fn test_identities_repository_name_and_default() -> Result<()> {
+        let identity1 = create_identity1().await?;
+        let identity2 = create_identity2().await?;
+        let db_file = NamedTempFile::new().unwrap();
+        let repository = create_repository(db_file.path()).await?;
+
+        // store an identity
+        repository.store_identity(&identity1).await?;
+
+        // A name can be associated to an identity
+        repository
+            .name_identity(&identity1.identifier(), "name")
+            .await?;
+        let result = repository.get_identifier_by_name("name").await?;
+        assert_eq!(result, Some(identity1.identifier().clone()));
+
+        // An identity can be marked as being the default one
+        repository.store_identity(&identity2).await?;
+        repository.set_as_default(&identity2.identifier()).await?;
+        let result = repository.get_default_identifier().await?;
+        assert_eq!(result, Some(identity2.identifier().clone()));
         Ok(())
     }
 

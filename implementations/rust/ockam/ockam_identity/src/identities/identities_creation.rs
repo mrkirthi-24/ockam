@@ -88,7 +88,7 @@ impl IdentitiesCreation {
     /// Create an `Identity` and store it
     pub async fn create_identity_with_options(&self, options: IdentityOptions) -> Result<Identity> {
         let identity = self.identities_keys().create_initial_key(options).await?;
-        self.repository.create_identity(&identity, None).await?;
+        self.repository.store_identity(&identity).await?;
         Ok(identity)
     }
 

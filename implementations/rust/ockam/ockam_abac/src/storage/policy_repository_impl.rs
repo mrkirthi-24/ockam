@@ -88,7 +88,7 @@ impl ToSqlxType for Action {
 }
 
 #[derive(FromRow)]
-struct PolicyRow {
+pub(crate) struct PolicyRow {
     resource: String,
     action: String,
     expression: Vec<u8>,

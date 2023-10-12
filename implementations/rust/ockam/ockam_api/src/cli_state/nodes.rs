@@ -1,3 +1,167 @@
+use std::path::PathBuf;
+
+use ockam::identity::{Identifier, Vault};
+use ockam_multiaddr::MultiAddr;
+
+use crate::cli_state::{CliState, CliStateError};
+use crate::cli_state::{ProjectConfig, Result};
+use crate::config::lookup::{InternetAddress, ProjectLookup};
+use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
+
+impl CliState {
+    pub async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
+        todo!("implement get_node_identifier")
+    }
+
+    pub async fn get_node_vault(&self, node_name: &str) -> Result<Vault> {
+        todo!("get_node_vault")
+    }
+
+    pub async fn get_node_identifier(&self, node_name: &str) -> Result<Identifier> {
+        todo!("implement get_node_identifier")
+    }
+
+    pub async fn get_node_identifier_name(&self, node_name: &str) -> Result<Option<String>> {
+        todo!("implement get_node_identifier_name")
+    }
+
+    pub async fn create_node(&self, node_name: &str) -> Result<NodeInfo> {
+        todo!("create_node")
+    }
+
+    pub async fn get_node(&self, node_name: &str) -> Result<NodeInfo> {
+        todo!("get_node_by_name")
+    }
+
+    pub async fn is_node_running(&self, node_name: &str) -> Result<bool> {
+        todo!("is_node_running")
+    }
+
+    pub fn stdout_logs(&self, node_name: &str) -> PathBuf {
+        todo!("stdout_logs")
+    }
+
+    pub async fn get_node_project(&self, node_name: &str) -> Result<Option<ProjectConfig>> {
+        todo!("get_node_project")
+    }
+
+    pub async fn kill_node(&self, node_name: &str, force: bool) -> Result<()> {
+        todo!("kill_node")
+    }
+
+    pub async fn delete_node_sigkill(&self, node_name: &str, force: bool) -> Result<()> {
+        todo!("delete_sigkill")
+    }
+
+    pub async fn delete_node(&self, node_name: &str) -> Result<()> {
+        todo!("get_node_by_name")
+    }
+
+    pub async fn delete_default_node(&self) -> Result<()> {
+        todo!("get_node_by_name")
+    }
+
+    pub async fn get_default_node(&self) -> Result<NodeInfo> {
+        todo!("get_default_node")
+    }
+
+    pub async fn is_default_node(&self, name: &str) -> Result<bool> {
+        todo!("is_default_node")
+    }
+
+    pub async fn set_default_node(&self, name: &str) -> Result<bool> {
+        todo!("set_default_node")
+    }
+
+    pub async fn set_node_transport(
+        &self,
+        node_name: &str,
+        transport_type: TransportType,
+        transport_mode: TransportMode,
+        address: String,
+    ) -> Result<()> {
+        todo!("set_node_transport")
+    }
+
+    pub async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
+        todo!("set_node_pid")
+    }
+
+    pub async fn is_node_api_transport_set(&self, node_name: &str) -> Result<bool> {
+        todo!("is_node_api_transport_set")
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct NodeInfo {
+    name: String,
+    identifier: Identifier,
+    verbosity: u8,
+    is_authority_node: bool,
+    project: Option<ProjectLookup>,
+    api_transport: Option<CreateTransportJson>,
+    default_vault_name: String,
+    pid: Option<u32>,
+    is_default: bool,
+    stdout_log: PathBuf,
+    stderr_log: PathBuf,
+}
+
+impl NodeInfo {
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn identifier(&self) -> Identifier {
+        self.identifier.clone()
+    }
+
+    pub fn is_default(&self) -> bool {
+        self.is_default
+    }
+
+    pub fn pid(&self) -> Option<u32> {
+        self.pid.clone()
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.pid.is_some()
+    }
+
+    pub fn verbosity(&self) -> u8 {
+        self.verbosity
+    }
+
+    pub fn api_transport_port(&self) -> Option<u16> {
+        self.api_transport.as_ref().map(|t| t.addr.port())
+    }
+
+    pub fn api_transport_address(&self) -> Option<InternetAddress> {
+        self.api_transport.as_ref().map(|t| t.addr.clone())
+    }
+
+    pub fn api_transport_multiaddr(&self) -> Result<MultiAddr> {
+        self.api_transport
+            .as_ref()
+            .ok_or(CliStateError::InvalidData(
+                "no transport has been set on the node".to_string(),
+            ))
+            .and_then(|t| t.maddr().map_err(|e| CliStateError::Ockam(e)))
+    }
+
+    pub fn is_authority_node(&self) -> bool {
+        self.is_authority_node
+    }
+
+    pub fn stdout_log(&self) -> PathBuf {
+        self.stdout_log.clone()
+    }
+
+    pub fn stderr_log(&self) -> PathBuf {
+        self.stderr_log.clone()
+    }
+}
+
 // use super::Result;
 // use crate::cli_state::{
 //     CliState, CliStateError, ProjectConfig, ProjectConfigCompact, StateDirTrait, StateItemTrait,

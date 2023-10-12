@@ -30,7 +30,7 @@ async fn create_identity_with_aws_pregenerated_key() -> Result<()> {
         .identities_creation()
         .identity_builder()
         .with_existing_key(key_id.clone())
-        .build()
+        .build(None)
         .await?;
 
     identities

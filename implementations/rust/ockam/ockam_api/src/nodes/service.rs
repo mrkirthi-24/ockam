@@ -1,12 +1,12 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
-use miette::IntoDiagnostic;
 use std::collections::BTreeMap;
 use std::error::Error as _;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use miette::IntoDiagnostic;
 use minicbor::{Decoder, Encode};
 
 use ockam::identity::models::CredentialAndPurposeKey;
@@ -26,13 +26,13 @@ use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::IncomingAccessControl;
 use ockam_core::{AllowAll, AsyncTryClone};
+use ockam_core::{Error, IncomingAccessControl};
 use ockam_multiaddr::MultiAddr;
 
 use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
-use crate::cli_state::{CliState, StateDirTrait, StateItemTrait};
+use crate::cli_state::{CliState, StateDirTrait};
 use crate::cloud::{AuthorityNode, ProjectNode};
 use crate::config::cli::TrustContextConfig;
 use crate::config::lookup::ProjectLookup;
@@ -109,12 +109,20 @@ impl NodeManager {
             .await?)
     }
 
-    pub async fn get_identifier_by_name(
+    pub(crate) async fn get_identifier_by_name(
         &self,
         identity_name: Option<String>,
     ) -> Result<Identifier> {
         if let Some(name) = identity_name {
-            Ok(self.cli_state.get_identifier_by_name(name.as_ref()).await?)
+            Ok(self
+                .cli_state
+                .get_identifier_by_name(name.as_ref())
+                .await?
+                .ok_or(Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    format!("there is no identity with name {name}"),
+                ))?)
         } else {
             Ok(self.identifier().await?.clone())
         }
